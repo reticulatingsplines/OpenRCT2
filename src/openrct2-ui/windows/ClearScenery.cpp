@@ -140,7 +140,8 @@ public:
             return;
 
         char* end;
-        int32_t size = strtol(std::string(text).c_str(), &end, 10);
+        const auto text_as_str = std::string(text);
+        int32_t size = strtol(text_as_str.c_str(), &end, 10);
         if (*end == '\0')
         {
             size = std::clamp(size, MINIMUM_TOOL_SIZE, MAXIMUM_TOOL_SIZE);
