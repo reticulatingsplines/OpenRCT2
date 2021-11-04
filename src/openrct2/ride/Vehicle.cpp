@@ -5577,7 +5577,7 @@ OpenRCT2::Audio::SoundId Vehicle::ProduceScreamSound(const int32_t totalNumPeeps
             switch (vehicleEntry->sound_range)
             {
                 case SOUND_RANGE_SCREAMS_0:
-                    scream_sound_id = byte_9A3A14[r % 2];
+                    scream_sound_id = byte_9A3A16[r % 2];
                     break;
                 case SOUND_RANGE_SCREAMS_1:
                     scream_sound_id = byte_9A3A18[r % 7];
