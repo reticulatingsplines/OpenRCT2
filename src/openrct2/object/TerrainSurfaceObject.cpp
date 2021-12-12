@@ -16,6 +16,7 @@
 #include "../core/Json.hpp"
 #include "../core/String.hpp"
 #include "../drawing/Drawing.h"
+#include "../drawing/Image.h"
 #include "../localisation/Localisation.h"
 #include "../world/Location.hpp"
 #include "ObjectManager.h"
@@ -124,8 +125,6 @@ void TerrainSurfaceObject::ReadJson(IReadObjectContext* context, json_t& root)
     }
 
     PopulateTablesFromJson(context, root);
-
-    NumImagesLoaded = GetImageTable().GetCount();
 }
 
 uint32_t TerrainSurfaceObject::GetImageId(

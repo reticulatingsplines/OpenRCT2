@@ -15,20 +15,20 @@
 #include "../actions/RideSetVehicleAction.h"
 #include "../actions/TrackRemoveAction.h"
 #include "../common.h"
+#include "../entity/EntityList.h"
+#include "../entity/EntityRegistry.h"
+#include "../entity/Staff.h"
 #include "../interface/Window.h"
 #include "../localisation/Date.h"
 #include "../localisation/Localisation.h"
 #include "../network/network.h"
 #include "../paint/VirtualFloor.h"
-#include "../peep/Staff.h"
 #include "../ui/UiContext.h"
 #include "../ui/WindowManager.h"
 #include "../util/Util.h"
 #include "../windows/Intent.h"
 #include "../world/Banner.h"
 #include "../world/Climate.h"
-#include "../world/Entity.h"
-#include "../world/EntityList.h"
 #include "../world/Entrance.h"
 #include "../world/Footpath.h"
 #include "../world/Location.hpp"
@@ -36,7 +36,7 @@
 #include "../world/MapAnimation.h"
 #include "../world/Park.h"
 #include "../world/Scenery.h"
-#include "../world/Sprite.h"
+#include "../world/TileElementsView.h"
 #include "Ride.h"
 #include "RideData.h"
 #include "Track.h"
@@ -168,7 +168,7 @@ static void ride_remove_cable_lift(Ride* ride)
             }
             vehicle->Invalidate();
             spriteIndex = vehicle->next_vehicle_on_train;
-            sprite_remove(vehicle);
+            EntityRemove(vehicle);
         } while (spriteIndex != SPRITE_INDEX_NULL);
     }
 }
@@ -196,7 +196,7 @@ void Ride::RemoveVehicles()
                 }
                 vehicle->Invalidate();
                 spriteIndex = vehicle->next_vehicle_on_train;
-                sprite_remove(vehicle);
+                EntityRemove(vehicle);
             }
 
             vehicles[i] = SPRITE_INDEX_NULL;
@@ -211,7 +211,7 @@ void Ride::RemoveVehicles()
             if (vehicle->ride == id)
             {
                 vehicle->Invalidate();
-                sprite_remove(vehicle);
+                EntityRemove(vehicle);
             }
         }
     }
@@ -249,16 +249,16 @@ void ride_clear_for_construction(Ride* ride)
  *
  *  rct2: 0x006664DF
  */
-void ride_remove_peeps(Ride* ride)
+void Ride::RemovePeeps()
 {
     // Find first station
-    auto stationIndex = ride_get_first_valid_station_start(ride);
+    auto stationIndex = ride_get_first_valid_station_start(this);
 
     // Get exit position and direction
     auto exitPosition = CoordsXYZD{ 0, 0, 0, INVALID_DIRECTION };
     if (stationIndex != STATION_INDEX_NULL)
     {
-        auto location = ride_get_exit_location(ride, stationIndex).ToCoordsXYZD();
+        auto location = ride_get_exit_location(this, stationIndex).ToCoordsXYZD();
         if (!location.IsNull())
         {
             auto direction = direction_reverse(location.direction);
@@ -280,7 +280,7 @@ void ride_remove_peeps(Ride* ride)
         if (peep->State == PeepState::QueuingFront || peep->State == PeepState::EnteringRide
             || peep->State == PeepState::LeavingRide || peep->State == PeepState::OnRide)
         {
-            if (peep->CurrentRide != ride->id)
+            if (peep->CurrentRide != id)
                 continue;
 
             peep_decrement_num_riders(peep);
@@ -314,7 +314,7 @@ void ride_remove_peeps(Ride* ride)
     {
         if (peep->State == PeepState::Fixing || peep->State == PeepState::Inspecting)
         {
-            if (peep->CurrentRide != ride->id)
+            if (peep->CurrentRide != id)
                 continue;
 
             if (exitPosition.direction == INVALID_DIRECTION)
@@ -337,33 +337,27 @@ void ride_remove_peeps(Ride* ride)
             peep->WindowInvalidateFlags |= PEEP_INVALIDATE_PEEP_STATS;
         }
     }
-    ride->num_riders = 0;
-    ride->slide_in_use = 0;
-    ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_MAIN;
+    num_riders = 0;
+    slide_in_use = 0;
+    window_invalidate_flags |= RIDE_INVALIDATE_RIDE_MAIN;
 }
 
 void ride_clear_blocked_tiles(Ride* ride)
 {
-    for (int32_t y = 0; y < MAXIMUM_MAP_SIZE_TECHNICAL; y++)
+    for (TileCoordsXY tilePos = {}; tilePos.x < gMapSize; ++tilePos.x)
     {
-        for (int32_t x = 0; x < MAXIMUM_MAP_SIZE_TECHNICAL; x++)
+        for (tilePos.y = 0; tilePos.y < gMapSize; ++tilePos.y)
         {
-            auto element = map_get_first_element_at(TileCoordsXY{ x, y });
-            if (element != nullptr)
+            for (auto* trackElement : TileElementsView<TrackElement>(tilePos.ToCoordsXY()))
             {
-                do
-                {
-                    if (element->GetType() == TILE_ELEMENT_TYPE_TRACK && element->AsTrack()->GetRideIndex() == ride->id)
-                    {
-                        // Unblock footpath element that is at same position
-                        auto footpathElement = map_get_footpath_element(
-                            TileCoordsXYZ{ x, y, element->base_height }.ToCoordsXYZ());
-                        if (footpathElement != nullptr)
-                        {
-                            footpathElement->AsPath()->SetIsBlockedByVehicle(false);
-                        }
-                    }
-                } while (!(element++)->IsLastForTile());
+                // Unblock footpath element that is at same position
+                auto* footpathElement = map_get_footpath_element(
+                    TileCoordsXYZ{ tilePos, trackElement->base_height }.ToCoordsXYZ());
+
+                if (footpathElement == nullptr)
+                    continue;
+
+                footpathElement->AsPath()->SetIsBlockedByVehicle(false);
             }
         }
     }
@@ -1014,7 +1008,7 @@ bool ride_modify(CoordsXYE* input)
     }
 
     // Check if element is a station entrance or exit
-    if (tileElement.element->GetType() == TILE_ELEMENT_TYPE_ENTRANCE)
+    if (tileElement.element->GetType() == TileElementType::Entrance)
         return ride_modify_entrance_or_exit(tileElement);
 
     ride_create_or_find_construction_window(rideIndex);
@@ -1031,7 +1025,7 @@ bool ride_modify(CoordsXYE* input)
             tileElement = endOfTrackElement;
     }
 
-    if (tileElement.element == nullptr || tileElement.element->GetType() != TILE_ELEMENT_TYPE_TRACK)
+    if (tileElement.element == nullptr || tileElement.element->GetType() != TileElementType::Track)
         return false;
 
     auto tileCoords = CoordsXYZ{ tileElement, tileElement.element->GetBaseZ() };
@@ -1098,7 +1092,7 @@ int32_t ride_initialise_construction_window(Ride* ride)
         return 0;
 
     ride_clear_for_construction(ride);
-    ride_remove_peeps(ride);
+    ride->RemovePeeps();
 
     w = ride_create_or_find_construction_window(ride->id);
 
@@ -1164,7 +1158,7 @@ int32_t ride_get_refund_price(const Ride* ride)
 
         auto res = GameActions::Query(&trackRemoveAction);
 
-        cost += res->Cost;
+        cost += res.Cost;
 
         if (!track_block_get_next(&trackElement, &trackElement, nullptr, nullptr))
         {
@@ -1191,7 +1185,7 @@ money32 set_operating_setting(ride_id_t rideId, RideSetSetting setting, uint8_t 
 {
     auto rideSetSetting = RideSetSettingAction(rideId, setting, value);
     auto res = GameActions::Execute(&rideSetSetting);
-    return res->Error == GameActions::Status::Ok ? 0 : MONEY32_UNDEFINED;
+    return res.Error == GameActions::Status::Ok ? 0 : MONEY32_UNDEFINED;
 }
 
 money32 set_operating_setting_nested(ride_id_t rideId, RideSetSetting setting, uint8_t value, uint8_t flags)
@@ -1200,7 +1194,7 @@ money32 set_operating_setting_nested(ride_id_t rideId, RideSetSetting setting, u
     rideSetSetting.SetFlags(flags);
     auto res = flags & GAME_COMMAND_FLAG_APPLY ? GameActions::ExecuteNested(&rideSetSetting)
                                                : GameActions::QueryNested(&rideSetSetting);
-    return res->Error == GameActions::Status::Ok ? 0 : MONEY32_UNDEFINED;
+    return res.Error == GameActions::Status::Ok ? 0 : MONEY32_UNDEFINED;
 }
 
 /**
@@ -1215,13 +1209,13 @@ CoordsXYZD ride_get_entrance_or_exit_position_from_screen_position(const ScreenC
     auto info = get_map_coordinates_from_pos(screenCoords, EnumsToFlags(ViewportInteractionItem::Ride));
     if (info.SpriteType != ViewportInteractionItem::None)
     {
-        if (info.Element->GetType() == TILE_ELEMENT_TYPE_TRACK)
+        if (info.Element->GetType() == TileElementType::Track)
         {
             const auto* trackElement = info.Element->AsTrack();
             if (trackElement->GetRideIndex() == gRideEntranceExitPlaceRideIndex)
             {
                 const auto& ted = GetTrackElementDescriptor(trackElement->GetTrackType());
-                if (ted.SequenceProperties[0] & TRACK_SEQUENCE_FLAG_ORIGIN)
+                if (std::get<0>(ted.SequenceProperties) & TRACK_SEQUENCE_FLAG_ORIGIN)
                 {
                     if (trackElement->GetTrackType() == TrackElemType::Maze)
                     {
@@ -1294,7 +1288,7 @@ CoordsXYZD ride_get_entrance_or_exit_position_from_screen_position(const ScreenC
                 continue;
             do
             {
-                if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+                if (tileElement->GetType() != TileElementType::Track)
                     continue;
                 if (tileElement->GetBaseZ() != stationBaseZ)
                     continue;
@@ -1369,7 +1363,7 @@ void Ride::ValidateStations()
                 {
                     if (tileElement->GetBaseZ() != location.z)
                         continue;
-                    if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+                    if (tileElement->GetType() != TileElementType::Track)
                         continue;
                     if (tileElement->AsTrack()->GetRideIndex() != id)
                         continue;
@@ -1378,7 +1372,7 @@ void Ride::ValidateStations()
 
                     ted = &GetTrackElementDescriptor(tileElement->AsTrack()->GetTrackType());
                     // keep searching for a station piece (coaster station, tower ride base, shops, and flat ride base)
-                    if (!(ted->SequenceProperties[0] & TRACK_SEQUENCE_FLAG_ORIGIN))
+                    if (!(std::get<0>(ted->SequenceProperties) & TRACK_SEQUENCE_FLAG_ORIGIN))
                         continue;
 
                     trackFound = true;
@@ -1424,11 +1418,11 @@ void Ride::ValidateStations()
                 {
                     if (blockLocation.z != tileElement->GetBaseZ())
                         continue;
-                    if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+                    if (tileElement->GetType() != TileElementType::Track)
                         continue;
 
                     ted = &GetTrackElementDescriptor(tileElement->AsTrack()->GetTrackType());
-                    if (!(ted->SequenceProperties[0] & TRACK_SEQUENCE_FLAG_ORIGIN))
+                    if (!(std::get<0>(ted->SequenceProperties) & TRACK_SEQUENCE_FLAG_ORIGIN))
                         continue;
 
                     trackFound = true;
@@ -1495,7 +1489,7 @@ void Ride::ValidateStations()
             continue;
         do
         {
-            if (tileElement->GetType() != TILE_ELEMENT_TYPE_ENTRANCE)
+            if (tileElement->GetType() != TileElementType::Entrance)
                 continue;
             if (tileElement->base_height != locationCoords.z)
                 continue;
@@ -1517,7 +1511,7 @@ void Ride::ValidateStations()
                 continue;
             do
             {
-                if (trackElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+                if (trackElement->GetType() != TileElementType::Track)
                     continue;
                 if (trackElement->AsTrack()->GetRideIndex() != id)
                     continue;

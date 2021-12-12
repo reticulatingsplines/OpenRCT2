@@ -154,7 +154,7 @@ void SetTileElements(std::vector<TileElement>&& tileElements)
 static TileElement GetDefaultSurfaceElement()
 {
     TileElement el;
-    el.ClearAs(TILE_ELEMENT_TYPE_SURFACE);
+    el.ClearAs(TileElementType::Surface);
     el.SetLastForTile(true);
     el.base_height = 14;
     el.clearance_height = 14;
@@ -433,7 +433,7 @@ void map_init(int32_t size)
     for (int32_t i = 0; i < numTiles; i++)
     {
         auto* element = &tileElements[i];
-        element->ClearAs(TILE_ELEMENT_TYPE_SURFACE);
+        element->ClearAs(TileElementType::Surface);
         element->SetLastForTile(true);
         element->base_height = 14;
         element->clearance_height = 14;
@@ -700,7 +700,7 @@ bool map_coord_is_connected(const TileCoordsXYZ& loc, uint8_t faceDirection)
 
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_PATH)
+        if (tileElement->GetType() != TileElementType::Path)
             continue;
 
         uint8_t slopeDirection = tileElement->AsPath()->GetSlopeDirection();
@@ -1118,22 +1118,24 @@ void map_remove_all_rides()
     {
         switch (it.element->GetType())
         {
-            case TILE_ELEMENT_TYPE_PATH:
+            case TileElementType::Path:
                 if (it.element->AsPath()->IsQueue())
                 {
                     it.element->AsPath()->SetHasQueueBanner(false);
                     it.element->AsPath()->SetRideIndex(RIDE_ID_NULL);
                 }
                 break;
-            case TILE_ELEMENT_TYPE_ENTRANCE:
+            case TileElementType::Entrance:
                 if (it.element->AsEntrance()->GetEntranceType() == ENTRANCE_TYPE_PARK_ENTRANCE)
                     break;
                 [[fallthrough]];
-            case TILE_ELEMENT_TYPE_TRACK:
+            case TileElementType::Track:
                 footpath_queue_chain_reset();
                 footpath_remove_edges_at(TileCoordsXY{ it.x, it.y }.ToCoordsXY(), it.element);
                 tile_element_remove(it.element);
                 tile_element_iterator_restart_for_tile(&it);
+                break;
+            default:
                 break;
         }
     } while (tile_element_iterator_next(&it));
@@ -1278,7 +1280,7 @@ TileElement* tile_element_insert(const CoordsXYZ& loc, int32_t occupiedQuadrants
     // Insert new map element
     auto* insertedElement = newTileElement;
     newTileElement->type = 0;
-    newTileElement->SetType(static_cast<uint8_t>(type));
+    newTileElement->SetType(type);
     newTileElement->SetBaseZ(loc.z);
     newTileElement->Flags = 0;
     newTileElement->SetLastForTile(isLastForTile);
@@ -1517,7 +1519,7 @@ static void clear_element_at(const CoordsXY& loc, TileElement** elementPtr)
     TileElement* element = *elementPtr;
     switch (element->GetType())
     {
-        case TILE_ELEMENT_TYPE_SURFACE:
+        case TileElementType::Surface:
             element->base_height = MINIMUM_LAND_HEIGHT;
             element->clearance_height = MINIMUM_LAND_HEIGHT;
             element->owner = 0;
@@ -1532,7 +1534,7 @@ static void clear_element_at(const CoordsXY& loc, TileElement** elementPtr)
             // The rest of the elements are removed from the array, so the pointer doesn't need to be updated.
             (*elementPtr)++;
             break;
-        case TILE_ELEMENT_TYPE_ENTRANCE:
+        case TileElementType::Entrance:
         {
             int32_t rotation = element->GetDirectionWithOffset(1);
             auto seqLoc = loc;
@@ -1548,43 +1550,43 @@ static void clear_element_at(const CoordsXY& loc, TileElement** elementPtr)
             auto parkEntranceRemoveAction = ParkEntranceRemoveAction(CoordsXYZ{ seqLoc, element->GetBaseZ() });
             auto result = GameActions::ExecuteNested(&parkEntranceRemoveAction);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result->Error != GameActions::Status::Ok)
+            if (result.Error != GameActions::Status::Ok)
             {
                 tile_element_remove(element);
             }
             break;
         }
-        case TILE_ELEMENT_TYPE_WALL:
+        case TileElementType::Wall:
         {
             CoordsXYZD wallLocation = { loc.x, loc.y, element->GetBaseZ(), element->GetDirection() };
             auto wallRemoveAction = WallRemoveAction(wallLocation);
             auto result = GameActions::ExecuteNested(&wallRemoveAction);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result->Error != GameActions::Status::Ok)
+            if (result.Error != GameActions::Status::Ok)
             {
                 tile_element_remove(element);
             }
         }
         break;
-        case TILE_ELEMENT_TYPE_LARGE_SCENERY:
+        case TileElementType::LargeScenery:
         {
             auto removeSceneryAction = LargeSceneryRemoveAction(
                 { loc.x, loc.y, element->GetBaseZ(), element->GetDirection() }, element->AsLargeScenery()->GetSequenceIndex());
             auto result = GameActions::ExecuteNested(&removeSceneryAction);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result->Error != GameActions::Status::Ok)
+            if (result.Error != GameActions::Status::Ok)
             {
                 tile_element_remove(element);
             }
         }
         break;
-        case TILE_ELEMENT_TYPE_BANNER:
+        case TileElementType::Banner:
         {
             auto bannerRemoveAction = BannerRemoveAction(
                 { loc.x, loc.y, element->GetBaseZ(), element->AsBanner()->GetPosition() });
             auto result = GameActions::ExecuteNested(&bannerRemoveAction);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result->Error != GameActions::Status::Ok)
+            if (result.Error != GameActions::Status::Ok)
             {
                 tile_element_remove(element);
             }
@@ -1649,7 +1651,7 @@ LargeSceneryElement* map_get_large_scenery_segment(const CoordsXYZD& sceneryPos,
     auto sceneryTilePos = TileCoordsXYZ{ sceneryPos };
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_LARGE_SCENERY)
+        if (tileElement->GetType() != TileElementType::LargeScenery)
             continue;
         if (tileElement->base_height != sceneryTilePos.z)
             continue;
@@ -1671,7 +1673,7 @@ EntranceElement* map_get_park_entrance_element_at(const CoordsXYZ& entranceCoord
     {
         do
         {
-            if (tileElement->GetType() != TILE_ELEMENT_TYPE_ENTRANCE)
+            if (tileElement->GetType() != TileElementType::Entrance)
                 continue;
 
             if (tileElement->base_height != entranceTileCoords.z)
@@ -1697,7 +1699,7 @@ EntranceElement* map_get_ride_entrance_element_at(const CoordsXYZ& entranceCoord
     {
         do
         {
-            if (tileElement->GetType() != TILE_ELEMENT_TYPE_ENTRANCE)
+            if (tileElement->GetType() != TileElementType::Entrance)
                 continue;
 
             if (tileElement->base_height != entranceTileCoords.z)
@@ -1723,7 +1725,7 @@ EntranceElement* map_get_ride_exit_element_at(const CoordsXYZ& exitCoords, bool 
     {
         do
         {
-            if (tileElement->GetType() != TILE_ELEMENT_TYPE_ENTRANCE)
+            if (tileElement->GetType() != TileElementType::Entrance)
                 continue;
 
             if (tileElement->base_height != exitTileCoords.z)
@@ -1749,7 +1751,7 @@ SmallSceneryElement* map_get_small_scenery_element_at(const CoordsXYZ& sceneryCo
     {
         do
         {
-            if (tileElement->GetType() != TILE_ELEMENT_TYPE_SMALL_SCENERY)
+            if (tileElement->GetType() != TileElementType::SmallScenery)
                 continue;
             if (tileElement->AsSmallScenery()->GetSceneryQuadrant() != quadrant)
                 continue;
@@ -1838,7 +1840,7 @@ ScreenCoordsXY translate_3d_to_2d_with_z(int32_t rotation, const CoordsXYZ& pos)
     return ScreenCoordsXY{ rotated.y - rotated.x, ((rotated.x + rotated.y) >> 1) - pos.z };
 }
 
-static void map_invalidate_tile_under_zoom(int32_t x, int32_t y, int32_t z0, int32_t z1, int32_t maxZoom)
+static void map_invalidate_tile_under_zoom(int32_t x, int32_t y, int32_t z0, int32_t z1, ZoomLevel maxZoom)
 {
     if (gOpenRCT2Headless)
         return;
@@ -1863,7 +1865,7 @@ static void map_invalidate_tile_under_zoom(int32_t x, int32_t y, int32_t z0, int
  */
 void map_invalidate_tile(const CoordsXYRangedZ& tilePos)
 {
-    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, -1);
+    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, ZoomLevel{ -1 });
 }
 
 /**
@@ -1872,7 +1874,7 @@ void map_invalidate_tile(const CoordsXYRangedZ& tilePos)
  */
 void map_invalidate_tile_zoom1(const CoordsXYRangedZ& tilePos)
 {
-    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, 1);
+    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, ZoomLevel{ 1 });
 }
 
 /**
@@ -1881,7 +1883,7 @@ void map_invalidate_tile_zoom1(const CoordsXYRangedZ& tilePos)
  */
 void map_invalidate_tile_zoom0(const CoordsXYRangedZ& tilePos)
 {
-    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, 0);
+    map_invalidate_tile_under_zoom(tilePos.x, tilePos.y, tilePos.baseZ, tilePos.clearanceZ, ZoomLevel{ 0 });
 }
 
 /**
@@ -1965,10 +1967,10 @@ bool map_surface_is_blocked(const CoordsXY& mapCoords)
         if (base_z < tileElement->base_height)
             continue;
 
-        if (tileElement->GetType() == TILE_ELEMENT_TYPE_PATH || tileElement->GetType() == TILE_ELEMENT_TYPE_WALL)
+        if (tileElement->GetType() == TileElementType::Path || tileElement->GetType() == TileElementType::Wall)
             continue;
 
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_SMALL_SCENERY)
+        if (tileElement->GetType() != TileElementType::SmallScenery)
             return true;
 
         auto* sceneryEntry = tileElement->AsSmallScenery()->GetEntry();
@@ -2007,7 +2009,7 @@ TrackElement* map_get_track_element_at(const CoordsXYZ& trackPos)
         return nullptr;
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->GetBaseZ() != trackPos.z)
             continue;
@@ -2032,7 +2034,7 @@ TileElement* map_get_track_element_at_of_type(const CoordsXYZ& trackPos, track_t
     auto trackTilePos = TileCoordsXYZ{ trackPos };
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->base_height != trackTilePos.z)
             continue;
@@ -2059,7 +2061,7 @@ TileElement* map_get_track_element_at_of_type_seq(const CoordsXYZ& trackPos, tra
     {
         if (tileElement == nullptr)
             break;
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->base_height != trackTilePos.z)
             continue;
@@ -2136,7 +2138,7 @@ TileElement* map_get_track_element_at_of_type_from_ride(const CoordsXYZ& trackPo
     auto trackTilePos = TileCoordsXYZ{ trackPos };
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->base_height != trackTilePos.z)
             continue;
@@ -2165,7 +2167,7 @@ TileElement* map_get_track_element_at_from_ride(const CoordsXYZ& trackPos, ride_
     auto trackTilePos = TileCoordsXYZ{ trackPos };
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->base_height != trackTilePos.z)
             continue;
@@ -2193,7 +2195,7 @@ TileElement* map_get_track_element_at_with_direction_from_ride(const CoordsXYZD&
     auto trackTilePos = TileCoordsXYZ{ trackPos };
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->base_height != trackTilePos.z)
             continue;
@@ -2216,7 +2218,7 @@ WallElement* map_get_wall_element_at(const CoordsXYRangedZ& coords)
     {
         do
         {
-            if (tileElement->GetType() == TILE_ELEMENT_TYPE_WALL && coords.baseZ < tileElement->GetClearanceZ()
+            if (tileElement->GetType() == TileElementType::Wall && coords.baseZ < tileElement->GetClearanceZ()
                 && coords.clearanceZ > tileElement->GetBaseZ())
             {
                 return tileElement->AsWall();
@@ -2235,7 +2237,7 @@ WallElement* map_get_wall_element_at(const CoordsXYZD& wallCoords)
         return nullptr;
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_WALL)
+        if (tileElement->GetType() != TileElementType::Wall)
             continue;
         if (tileElement->base_height != tileWallCoords.z)
             continue;
@@ -2261,9 +2263,9 @@ uint16_t check_max_allowable_land_rights_for_tile(const CoordsXYZ& tileMapPos)
     auto tilePos = TileCoordsXYZ{ tileMapPos };
     do
     {
-        int32_t type = tileElement->GetType();
-        if (type == TILE_ELEMENT_TYPE_PATH
-            || (type == TILE_ELEMENT_TYPE_ENTRANCE
+        auto type = tileElement->GetType();
+        if (type == TileElementType::Path
+            || (type == TileElementType::Entrance
                 && tileElement->AsEntrance()->GetEntranceType() == ENTRANCE_TYPE_PARK_ENTRANCE))
         {
             destOwnership = OWNERSHIP_CONSTRUCTION_RIGHTS_OWNED;

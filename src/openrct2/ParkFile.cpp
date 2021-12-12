@@ -23,6 +23,15 @@
 #include "core/OrcaStream.hpp"
 #include "core/Path.hpp"
 #include "drawing/Drawing.h"
+#include "entity/Balloon.h"
+#include "entity/Duck.h"
+#include "entity/EntityList.h"
+#include "entity/EntityRegistry.h"
+#include "entity/Fountain.h"
+#include "entity/Litter.h"
+#include "entity/MoneyEffect.h"
+#include "entity/Particle.h"
+#include "entity/Staff.h"
 #include "interface/Viewport.h"
 #include "interface/Window.h"
 #include "localisation/Date.h"
@@ -34,23 +43,15 @@
 #include "object/ObjectManager.h"
 #include "object/ObjectRepository.h"
 #include "peep/RideUseSystem.h"
-#include "peep/Staff.h"
 #include "ride/ShopItem.h"
 #include "ride/Vehicle.h"
 #include "scenario/Scenario.h"
 #include "scenario/ScenarioRepository.h"
-#include "world/Balloon.h"
 #include "world/Climate.h"
-#include "world/Duck.h"
-#include "world/EntityList.h"
 #include "world/Entrance.h"
-#include "world/Fountain.h"
-#include "world/Litter.h"
 #include "world/Map.h"
-#include "world/MoneyEffect.h"
 #include "world/Park.h"
-#include "world/Particle.h"
-#include "world/Sprite.h"
+#include "world/Scenery.h"
 
 #include <cstdint>
 #include <ctime>
@@ -63,19 +64,19 @@ using namespace OpenRCT2;
 
 static std::string_view MapToNewObjectIdentifier(std::string_view s);
 static std::optional<std::string_view> GetDATPathName(std::string_view newPathName);
-static const FootpathMapping* GetFootpathMapping(const ObjectEntryDescriptor& desc);
+static const RCT2::FootpathMapping* GetFootpathMapping(const ObjectEntryDescriptor& desc);
 static void UpdateFootpathsFromMapping(
     ObjectEntryIndex* pathToSurfaceMap, ObjectEntryIndex* pathToQueueSurfaceMap, ObjectEntryIndex* pathToRailingsMap,
     ObjectList& requiredObjects, ObjectEntryIndex& surfaceCount, ObjectEntryIndex& railingCount, ObjectEntryIndex entryIndex,
-    const FootpathMapping* footpathMapping);
+    const RCT2::FootpathMapping* footpathMapping);
 
 namespace OpenRCT2
 {
     // Current version that is saved.
-    constexpr uint32_t PARK_FILE_CURRENT_VERSION = 0x6;
+    constexpr uint32_t PARK_FILE_CURRENT_VERSION = 0x7;
 
     // The minimum version that is forwards compatible with the current version.
-    constexpr uint32_t PARK_FILE_MIN_VERSION = 0x6;
+    constexpr uint32_t PARK_FILE_MIN_VERSION = 0x7;
 
     namespace ParkFileChunkType
     {
@@ -655,7 +656,7 @@ namespace OpenRCT2
 
         void ReadWriteParkChunk(OrcaStream& os)
         {
-            os.ReadWriteChunk(ParkFileChunkType::PARK, [](OrcaStream::ChunkStream& cs) {
+            os.ReadWriteChunk(ParkFileChunkType::PARK, [version = os.GetHeader().TargetVersion](OrcaStream::ChunkStream& cs) {
                 auto& park = GetContext()->GetGameState()->GetPark();
                 cs.ReadWrite(park.Name);
                 cs.ReadWrite(gCash);
@@ -708,17 +709,28 @@ namespace OpenRCT2
                 });
 
                 // Awards
-                cs.ReadWriteArray(gCurrentAwards, [&cs](Award& award) {
-                    if (award.Time != 0)
-                    {
+                if (version <= 6)
+                {
+                    Award awards[MAX_AWARDS];
+                    cs.ReadWriteArray(awards, [&cs](Award& award) {
+                        if (award.Time != 0)
+                        {
+                            cs.ReadWrite(award.Time);
+                            cs.ReadWrite(award.Type);
+                            GetAwards().push_back(award);
+                            return true;
+                        }
+
+                        return false;
+                    });
+                }
+                else
+                {
+                    cs.ReadWriteVector(GetAwards(), [&cs](Award& award) {
                         cs.ReadWrite(award.Time);
                         cs.ReadWrite(award.Type);
-                        return true;
-                    }
-
-                    return false;
-                });
-
+                    });
+                }
                 cs.ReadWrite(gParkValue);
                 cs.ReadWrite(gCompanyValue);
                 cs.ReadWrite(gParkSize);
@@ -901,7 +913,7 @@ namespace OpenRCT2
                             tile_element_iterator_begin(&it);
                             while (tile_element_iterator_next(&it))
                             {
-                                if (it.element->GetType() == TILE_ELEMENT_TYPE_PATH)
+                                if (it.element->GetType() == TileElementType::Path)
                                 {
                                     auto* pathElement = it.element->AsPath();
                                     if (pathElement->HasLegacyPathEntry())
@@ -946,7 +958,7 @@ namespace OpenRCT2
                         continue;
                     do
                     {
-                        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+                        if (tileElement->GetType() != TileElementType::Track)
                             continue;
 
                         auto* trackElement = tileElement->AsTrack();
@@ -971,9 +983,9 @@ namespace OpenRCT2
                     cs.Write(static_cast<uint32_t>(numBanners));
 
                     [[maybe_unused]] size_t numWritten = 0;
-                    for (BannerIndex i = 0; i < MAX_BANNERS; i++)
+                    for (BannerIndex::UnderlyingType i = 0; i < MAX_BANNERS; i++)
                     {
-                        auto banner = GetBanner(i);
+                        auto banner = GetBanner(BannerIndex::FromUnderlying(i));
                         if (banner != nullptr)
                         {
                             ReadWriteBanner(version, cs, *banner);
@@ -989,9 +1001,9 @@ namespace OpenRCT2
                     {
                         std::vector<Banner> banners;
                         cs.ReadWriteVector(banners, [version, &cs](Banner& banner) { ReadWriteBanner(version, cs, banner); });
-                        for (size_t i = 0; i < banners.size(); i++)
+                        for (BannerIndex::UnderlyingType i = 0; i < banners.size(); i++)
                         {
-                            auto bannerIndex = static_cast<BannerIndex>(i);
+                            auto bannerIndex = BannerIndex::FromUnderlying(i);
                             auto banner = GetOrCreateBanner(bannerIndex);
                             if (banner != nullptr)
                             {
@@ -1339,7 +1351,7 @@ namespace OpenRCT2
         static std::vector<ObjectEntryIndex> LegacyGetRideTypesBeenOn(const std::array<uint8_t, 16>& srcArray)
         {
             std::vector<ObjectEntryIndex> ridesTypesBeenOn;
-            for (ObjectEntryIndex i = 0; i < RCT12_MAX_RIDE_OBJECTS; i++)
+            for (ObjectEntryIndex i = 0; i < RCT2::Limits::MaxRideObject; i++)
             {
                 if (srcArray[i / 8] & (1 << (i % 8)))
                 {
@@ -1351,7 +1363,7 @@ namespace OpenRCT2
         static std::vector<ride_id_t> LegacyGetRidesBeenOn(const std::array<uint8_t, 32>& srcArray)
         {
             std::vector<ride_id_t> ridesBeenOn;
-            for (uint16_t i = 0; i < RCT12_MAX_RIDES_IN_PARK; i++)
+            for (uint16_t i = 0; i < RCT2::Limits::MaxRidesInPark; i++)
             {
                 if (srcArray[i / 8] & (1 << (i % 8)))
                 {
@@ -1931,7 +1943,7 @@ namespace OpenRCT2
             cs.ReadWrite(thought.type);
             if (version <= 2)
             {
-                int16_t item;
+                int16_t item{};
                 cs.ReadWrite(item);
                 thought.item = item;
             }
@@ -2031,7 +2043,7 @@ namespace OpenRCT2
         cs.ReadWrite(entity.AssignedStaffType);
         cs.ReadWrite(entity.MechanicTimeSinceCall);
         cs.ReadWrite(entity.HireDate);
-        if (os.GetHeader().TargetVersion <= 2)
+        if (os.GetHeader().TargetVersion <= 4)
         {
             cs.Ignore<uint8_t>();
         }
@@ -2181,7 +2193,7 @@ namespace OpenRCT2
         os.ReadWriteChunk(ParkFileChunkType::ENTITIES, [this, &os](OrcaStream::ChunkStream& cs) {
             if (cs.GetMode() == OrcaStream::Mode::READING)
             {
-                reset_sprite_list();
+                ResetAllEntities();
             }
 
             std::vector<uint16_t> entityIndices;
@@ -4557,11 +4569,11 @@ static std::optional<std::string_view> GetDATPathName(std::string_view newPathNa
     return std::nullopt;
 }
 
-static FootpathMapping _extendedFootpathMappings[] = {
+static RCT2::FootpathMapping _extendedFootpathMappings[] = {
     { "rct1.path.tarmac", "rct1.footpath_surface.tarmac", "rct1.footpath_surface.queue_blue", "rct2.footpath_railings.wood" },
 };
 
-static const FootpathMapping* GetFootpathMapping(const ObjectEntryDescriptor& desc)
+static const RCT2::FootpathMapping* GetFootpathMapping(const ObjectEntryDescriptor& desc)
 {
     for (const auto& mapping : _extendedFootpathMappings)
     {
@@ -4580,20 +4592,20 @@ static const FootpathMapping* GetFootpathMapping(const ObjectEntryDescriptor& de
         {
             rct_object_entry objectEntry = {};
             objectEntry.SetName(datPathName.value());
-            return GetFootpathSurfaceId(ObjectEntryDescriptor(objectEntry));
+            return RCT2::GetFootpathSurfaceId(ObjectEntryDescriptor(objectEntry));
         }
 
         return nullptr;
     }
 
     // Even old .park saves with DAT identifiers somehow exist.
-    return GetFootpathSurfaceId(desc);
+    return RCT2::GetFootpathSurfaceId(desc);
 }
 
 static void UpdateFootpathsFromMapping(
     ObjectEntryIndex* pathToSurfaceMap, ObjectEntryIndex* pathToQueueSurfaceMap, ObjectEntryIndex* pathToRailingsMap,
     ObjectList& requiredObjects, ObjectEntryIndex& surfaceCount, ObjectEntryIndex& railingCount, ObjectEntryIndex entryIndex,
-    const FootpathMapping* footpathMapping)
+    const RCT2::FootpathMapping* footpathMapping)
 {
     auto surfaceIndex = requiredObjects.Find(ObjectType::FootpathSurface, footpathMapping->NormalSurface);
     if (surfaceIndex == OBJECT_ENTRY_INDEX_NULL)

@@ -18,9 +18,10 @@
 #include "../core/JobPool.h"
 #include "../drawing/Drawing.h"
 #include "../drawing/IDrawingEngine.h"
+#include "../entity/EntityList.h"
+#include "../entity/Guest.h"
+#include "../entity/Staff.h"
 #include "../paint/Paint.h"
-#include "../peep/Guest.h"
-#include "../peep/Staff.h"
 #include "../ride/Ride.h"
 #include "../ride/TrackDesign.h"
 #include "../ride/Vehicle.h"
@@ -28,7 +29,6 @@
 #include "../ui/WindowManager.h"
 #include "../util/Math.hpp"
 #include "../world/Climate.h"
-#include "../world/EntityList.h"
 #include "../world/Map.h"
 #include "Colour.h"
 #include "Window.h"
@@ -86,7 +86,7 @@ void viewport_init_all()
     input_reset_flags();
     input_set_state(InputState::Reset);
     gPressedWidget.window_classification = 255;
-    gPickupPeepImage = UINT32_MAX;
+    gPickupPeepImage = ImageId();
     reset_tooltip_not_shown();
     gMapSelectFlags = 0;
     gStaffDrawPatrolAreas = 0xFFFF;
@@ -175,10 +175,10 @@ void viewport_create(rct_window* w, const ScreenCoordsXY& screenCoords, int32_t 
     viewport->pos = screenCoords;
     viewport->width = width;
     viewport->height = height;
-    const auto zoom = focus.zoom;
 
-    viewport->view_width = width << zoom;
-    viewport->view_height = height << zoom;
+    const auto zoom = focus.zoom;
+    viewport->view_width = width * zoom;
+    viewport->view_height = height * zoom;
     viewport->zoom = zoom;
     viewport->flags = 0;
 
@@ -218,11 +218,11 @@ void viewport_remove(rct_viewport* viewport)
     _viewports.erase(it);
 }
 
-void viewports_invalidate(const ScreenRect& screenRect, int32_t maxZoom)
+void viewports_invalidate(const ScreenRect& screenRect, ZoomLevel maxZoom)
 {
     for (auto& vp : _viewports)
     {
-        if (maxZoom == -1 || vp.zoom <= maxZoom)
+        if (maxZoom == ZoomLevel{ -1 } || vp.zoom <= ZoomLevel{ maxZoom })
         {
             viewport_invalidate(&vp, screenRect);
         }
@@ -947,10 +947,10 @@ void viewport_paint(
     const rct_viewport* viewport, rct_drawpixelinfo* dpi, const ScreenRect& screenRect,
     std::vector<RecordedPaintSession>* recorded_sessions)
 {
-    uint32_t viewFlags = viewport->flags;
+    const uint32_t viewFlags = viewport->flags;
     uint32_t width = screenRect.GetWidth();
     uint32_t height = screenRect.GetHeight();
-    uint32_t bitmask = viewport->zoom >= 0 ? 0xFFFFFFFF & (0xFFFFFFFF * viewport->zoom) : 0xFFFFFFFF;
+    const uint32_t bitmask = viewport->zoom >= ZoomLevel{ 0 } ? 0xFFFFFFFF & (0xFFFFFFFF * viewport->zoom) : 0xFFFFFFFF;
     ScreenCoordsXY topLeft = screenRect.Point1;
 
     width &= bitmask;
@@ -978,7 +978,7 @@ void viewport_paint(
     dpi1.remX = std::max(0, dpi->x - x);
     dpi1.remY = std::max(0, dpi->y - y);
 
-    // make sure, the compare operation is done in int32_t to avoid the loop becoming an infiniteloop.
+    // make sure, the compare operation is done in int32_t to avoid the loop becoming an infinite loop.
     // this as well as the [x += 32] in the loop causes signed integer overflow -> undefined behaviour.
     auto rightBorder = dpi1.x + dpi1.width;
     auto alignedX = floor2(dpi1.x, 32);
@@ -1081,7 +1081,7 @@ static void viewport_paint_weather_gloom(rct_drawpixelinfo* dpi)
     if (paletteId != FilterPaletteID::PaletteNull)
     {
         // Only scale width if zoomed in more than 1:1
-        auto zoomLevel = dpi->zoom_level < 0 ? dpi->zoom_level : 0;
+        auto zoomLevel = dpi->zoom_level < ZoomLevel{ 0 } ? dpi->zoom_level : ZoomLevel{ 0 };
         auto x = dpi->x;
         auto y = dpi->y;
         auto w = (dpi->width / zoomLevel) - 1;
@@ -1474,15 +1474,15 @@ static bool is_pixel_present_rle(const uint8_t* esi, int32_t x_start_point, int3
  * @return value originally stored in 0x00141F569
  */
 static bool is_sprite_interacted_with_palette_set(
-    rct_drawpixelinfo* dpi, int32_t imageId, const ScreenCoordsXY& coords, const PaletteMap& paletteMap)
+    rct_drawpixelinfo* dpi, ImageId imageId, const ScreenCoordsXY& coords, const PaletteMap& paletteMap)
 {
-    const rct_g1_element* g1 = gfx_get_g1_element(imageId & 0x7FFFF);
+    const rct_g1_element* g1 = gfx_get_g1_element(imageId);
     if (g1 == nullptr)
     {
         return false;
     }
 
-    if (dpi->zoom_level > 0)
+    if (dpi->zoom_level > ZoomLevel{ 0 })
     {
         if (g1->flags & G1_FLAG_NO_ZOOM_DRAW)
         {
@@ -1502,8 +1502,8 @@ static bool is_sprite_interacted_with_palette_set(
                 /* .zoom_level = */ dpi->zoom_level - 1,
             };
 
-            return is_sprite_interacted_with_palette_set(
-                &zoomed_dpi, imageId - g1->zoomed_offset, { coords.x / 2, coords.y / 2 }, paletteMap);
+            auto zoomImageId = imageId.WithIndex(imageId.GetIndex() - g1->zoomed_offset);
+            return is_sprite_interacted_with_palette_set(&zoomed_dpi, zoomImageId, { coords.x / 2, coords.y / 2 }, paletteMap);
         }
     }
 
@@ -1518,7 +1518,7 @@ static bool is_sprite_interacted_with_palette_set(
     origin.y += g1->y_offset;
     int32_t yStartPoint = 0;
     int32_t height = g1->height;
-    if (dpi->zoom_level != 0)
+    if (dpi->zoom_level != ZoomLevel{ 0 })
     {
         if (height % 2)
         {
@@ -1526,7 +1526,7 @@ static bool is_sprite_interacted_with_palette_set(
             yStartPoint++;
         }
 
-        if (dpi->zoom_level == 2)
+        if (dpi->zoom_level == ZoomLevel{ 2 })
         {
             if (height % 4)
             {
@@ -1618,19 +1618,22 @@ static bool is_sprite_interacted_with_palette_set(
  *  rct2: 0x00679023
  */
 
-static bool is_sprite_interacted_with(rct_drawpixelinfo* dpi, int32_t imageId, const ScreenCoordsXY& coords)
+static bool is_sprite_interacted_with(rct_drawpixelinfo* dpi, ImageId imageId, const ScreenCoordsXY& coords)
 {
     auto paletteMap = PaletteMap::GetDefault();
-    imageId &= ~IMAGE_TYPE_TRANSPARENT;
-    if (imageId & IMAGE_TYPE_REMAP)
+    if (imageId.HasPrimary() || imageId.IsRemap())
     {
         _currentImageType = IMAGE_TYPE_REMAP;
-        int32_t index = (imageId >> 19) & 0x7F;
-        if (imageId & IMAGE_TYPE_REMAP_2_PLUS)
+        uint8_t paletteIndex;
+        if (imageId.HasSecondary())
         {
-            index &= 0x1F;
+            paletteIndex = imageId.GetPrimary();
         }
-        if (auto pm = GetPaletteMapForColour(index); pm.has_value())
+        else
+        {
+            paletteIndex = imageId.GetRemap();
+        }
+        if (auto pm = GetPaletteMapForColour(paletteIndex); pm.has_value())
         {
             paletteMap = pm.value();
         }
@@ -1659,7 +1662,8 @@ InteractionInfo set_interaction_info_from_paint_session(paint_session* session, 
         while (next_ps != nullptr)
         {
             ps = next_ps;
-            if (is_sprite_interacted_with(dpi, ps->image_id, { ps->x, ps->y }))
+            auto imageId = ImageId::FromUInt32(ps->image_id, ps->tertiary_colour);
+            if (is_sprite_interacted_with(dpi, imageId, { ps->x, ps->y }))
             {
                 if (PSSpriteTypeIsInFilter(ps, filter))
                 {
@@ -1671,7 +1675,8 @@ InteractionInfo set_interaction_info_from_paint_session(paint_session* session, 
 
         for (attached_paint_struct* attached_ps = ps->attached_ps; attached_ps != nullptr; attached_ps = attached_ps->next)
         {
-            if (is_sprite_interacted_with(dpi, attached_ps->image_id, { (attached_ps->x + ps->x), (attached_ps->y + ps->y) }))
+            auto imageId = ImageId::FromUInt32(attached_ps->image_id, attached_ps->tertiary_colour);
+            if (is_sprite_interacted_with(dpi, imageId, { (attached_ps->x + ps->x), (attached_ps->y + ps->y) }))
             {
                 if (PSSpriteTypeIsInFilter(ps, filter))
                 {
@@ -1720,7 +1725,7 @@ InteractionInfo get_map_coordinates_from_pos_window(rct_window* window, const Sc
         viewLoc.x = viewLoc.x * myviewport->zoom;
         viewLoc.y = viewLoc.y * myviewport->zoom;
         viewLoc += myviewport->viewPos;
-        if (myviewport->zoom > 0)
+        if (myviewport->zoom > ZoomLevel{ 0 })
         {
             viewLoc.x &= (0xFFFFFFFF * myviewport->zoom) & 0xFFFFFFFF;
             viewLoc.y &= (0xFFFFFFFF * myviewport->zoom) & 0xFFFFFFFF;
@@ -1976,10 +1981,12 @@ void viewport_set_saved_view()
 
 ZoomLevel ZoomLevel::min()
 {
+#ifndef DISABLE_OPENGL
     if (drawing_engine_get_type() == DrawingEngine::OpenGL)
     {
-        return -2;
+        return ZoomLevel{ -2 };
     }
+#endif
 
-    return 0;
+    return ZoomLevel{ 0 };
 }

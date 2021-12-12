@@ -150,12 +150,12 @@ static int32_t tile_element_get_total_element_count(TileElement* tileElement)
 
     switch (tileElement->GetType())
     {
-        case TILE_ELEMENT_TYPE_PATH:
-        case TILE_ELEMENT_TYPE_SMALL_SCENERY:
-        case TILE_ELEMENT_TYPE_WALL:
+        case TileElementType::Path:
+        case TileElementType::SmallScenery:
+        case TileElementType::Wall:
             return 1;
 
-        case TILE_ELEMENT_TYPE_LARGE_SCENERY:
+        case TileElementType::LargeScenery:
         {
             auto* sceneryEntry = tileElement->AsLargeScenery()->GetEntry();
             tile = sceneryEntry->tiles;
@@ -217,12 +217,9 @@ static bool track_design_is_supported_object(const Object* obj)
 static void track_design_save_push_tile_element_desc(
     const rct_object_entry& entry, const CoordsXYZ& loc, uint8_t flags, uint8_t primaryColour, uint8_t secondaryColour)
 {
-    auto tileLoc = TileCoordsXYZ(loc);
     TrackDesignSceneryElement item{};
     item.scenery_object = ObjectEntryDescriptor(entry);
-    item.x = tileLoc.x;
-    item.y = tileLoc.y;
-    item.z = tileLoc.z;
+    item.loc = loc;
     item.flags = flags;
     item.primary_colour = primaryColour;
     item.secondary_colour = secondaryColour;
@@ -357,7 +354,7 @@ static std::optional<rct_object_entry> track_design_save_footpath_get_best_entry
             auto surfaceId = surfaceEntry->GetIdentifier();
             auto railingsEntry = pathElement->GetRailingsEntry();
             auto railingsId = railingsEntry == nullptr ? "" : railingsEntry->GetIdentifier();
-            return GetBestObjectEntryForSurface(surfaceId, railingsId);
+            return RCT2::GetBestObjectEntryForSurface(surfaceId, railingsId);
         }
     }
     return {};
@@ -442,15 +439,10 @@ static void track_design_save_pop_tile_element(const CoordsXY& loc, TileElement*
 static void track_design_save_pop_tile_element_desc(const ObjectEntryDescriptor& entry, const CoordsXYZ& loc, uint8_t flags)
 {
     size_t removeIndex = SIZE_MAX;
-    auto tileLoc = TileCoordsXYZ(loc);
     for (size_t i = 0; i < _trackSavedTileElementsDesc.size(); i++)
     {
         TrackDesignSceneryElement* item = &_trackSavedTileElementsDesc[i];
-        if (item->x != tileLoc.x)
-            continue;
-        if (item->y != tileLoc.y)
-            continue;
-        if (item->z != tileLoc.z)
+        if (item->loc != loc)
             continue;
         if (item->flags != flags)
             continue;
@@ -595,15 +587,15 @@ static bool track_design_save_should_select_scenery_around(ride_id_t rideIndex, 
 {
     switch (tileElement->GetType())
     {
-        case TILE_ELEMENT_TYPE_PATH:
+        case TileElementType::Path:
             if (tileElement->AsPath()->IsQueue() && tileElement->AsPath()->GetRideIndex() == rideIndex)
                 return true;
             break;
-        case TILE_ELEMENT_TYPE_TRACK:
+        case TileElementType::Track:
             if (tileElement->AsTrack()->GetRideIndex() == rideIndex)
                 return true;
             break;
-        case TILE_ELEMENT_TYPE_ENTRANCE:
+        case TileElementType::Entrance:
             // FIXME: This will always break and return false!
             if (tileElement->AsEntrance()->GetEntranceType() != ENTRANCE_TYPE_RIDE_ENTRANCE)
                 break;
@@ -611,6 +603,8 @@ static bool track_design_save_should_select_scenery_around(ride_id_t rideIndex, 
                 break;
             if (tileElement->AsEntrance()->GetRideIndex() == rideIndex)
                 return true;
+            break;
+        default:
             break;
     }
     return false;
@@ -632,20 +626,22 @@ static void track_design_save_select_nearby_scenery_for_tile(ride_id_t rideIndex
                 ViewportInteractionItem interactionType = ViewportInteractionItem::None;
                 switch (tileElement->GetType())
                 {
-                    case TILE_ELEMENT_TYPE_PATH:
+                    case TileElementType::Path:
                         if (!tileElement->AsPath()->IsQueue())
                             interactionType = ViewportInteractionItem::Footpath;
                         else if (tileElement->AsPath()->GetRideIndex() == rideIndex)
                             interactionType = ViewportInteractionItem::Footpath;
                         break;
-                    case TILE_ELEMENT_TYPE_SMALL_SCENERY:
+                    case TileElementType::SmallScenery:
                         interactionType = ViewportInteractionItem::Scenery;
                         break;
-                    case TILE_ELEMENT_TYPE_WALL:
+                    case TileElementType::Wall:
                         interactionType = ViewportInteractionItem::Wall;
                         break;
-                    case TILE_ELEMENT_TYPE_LARGE_SCENERY:
+                    case TileElementType::LargeScenery:
                         interactionType = ViewportInteractionItem::LargeScenery;
+                        break;
+                    default:
                         break;
                 }
 

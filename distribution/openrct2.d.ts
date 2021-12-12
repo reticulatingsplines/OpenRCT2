@@ -650,6 +650,7 @@ declare global {
 
         direction: Direction;
         trackType: number;
+        rideType: number;
         sequence: number | null;
         mazeEntry: number | null;
 
@@ -1988,6 +1989,7 @@ declare global {
         readonly mainViewport: Viewport;
         readonly tileSelection: TileSelection;
         readonly tool: Tool | null;
+        readonly imageManager: ImageManager;
 
         getWindow(id: number): Window;
         getWindow(classification: string): Window;
@@ -2117,7 +2119,7 @@ declare global {
     }
 
     interface TileSelection {
-        range: MapRange;
+        range: MapRange | null;
         tiles: CoordsXY[];
     }
 
@@ -2677,5 +2679,24 @@ declare global {
          * @param name The name of the title sequence.
          */
         create(name: string): TitleSequence;
+    }
+
+    interface ImageManager {
+        /**
+         * Gets the image index range for a predefined set of images.
+         * @param name The name of the image set.
+         */
+        getPredefinedRange(name: string) : ImageIndexRange | null;
+
+        /**
+         * Gets the list of available ranges of unallocated images.
+         * Useful for displaying how fragmented the allocated image list is.
+         */
+        getAvailableAllocationRanges(): ImageIndexRange[];
+    }
+
+    interface ImageIndexRange {
+        start: number;
+        count: number;
     }
 }

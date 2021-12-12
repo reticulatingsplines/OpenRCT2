@@ -46,7 +46,7 @@ static money32 RideEntranceExitPlaceGhost(
     rideEntranceExitPlaceAction.SetFlags(GAME_COMMAND_FLAG_ALLOW_DURING_PAUSED | GAME_COMMAND_FLAG_GHOST);
     auto res = GameActions::Execute(&rideEntranceExitPlaceAction);
 
-    return res->Error == GameActions::Status::Ok ? res->Cost : MONEY32_UNDEFINED;
+    return res.Error == GameActions::Status::Ok ? res.Cost : MONEY32_UNDEFINED;
 }
 
 /**
@@ -143,7 +143,7 @@ void maze_entrance_hedge_replacement(const CoordsXYE& entrance)
         return;
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->AsTrack()->GetRideIndex() != rideIndex)
             continue;
@@ -180,7 +180,7 @@ void maze_entrance_hedge_removal(const CoordsXYE& entrance)
         return;
     do
     {
-        if (tileElement->GetType() != TILE_ELEMENT_TYPE_TRACK)
+        if (tileElement->GetType() != TileElementType::Track)
             continue;
         if (tileElement->AsTrack()->GetRideIndex() != rideIndex)
             continue;

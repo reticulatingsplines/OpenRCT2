@@ -10,9 +10,10 @@
 #include "Station.h"
 
 #include "../Game.h"
-#include "../peep/Guest.h"
+#include "../entity/Guest.h"
 #include "../scenario/Scenario.h"
 #include "../world/Location.hpp"
+#include "RideEntry.h"
 #include "Track.h"
 #include "Vehicle.h"
 
@@ -277,7 +278,7 @@ static void ride_race_init_vehicle_speeds(Ride* ride)
 
         rct_ride_entry* rideEntry = vehicle->GetRideEntry();
 
-        vehicle->speed = (scenario_rand() & 16) - 8 + rideEntry->vehicles[vehicle->vehicle_type].powered_max_speed;
+        vehicle->speed = (scenario_rand() & 15) - 8 + rideEntry->vehicles[vehicle->vehicle_type].powered_max_speed;
 
         if (vehicle->num_peeps != 0)
         {
@@ -338,7 +339,7 @@ TileElement* ride_get_station_start_track_element(const Ride* ride, StationIndex
         return nullptr;
     do
     {
-        if (tileElement->GetType() == TILE_ELEMENT_TYPE_TRACK && stationStart.z == tileElement->GetBaseZ())
+        if (tileElement->GetType() == TileElementType::Track && stationStart.z == tileElement->GetBaseZ())
             return tileElement;
 
     } while (!(tileElement++)->IsLastForTile());
@@ -356,7 +357,7 @@ TileElement* ride_get_station_exit_element(const CoordsXYZ& elementPos)
     {
         if (tileElement == nullptr)
             break;
-        if (tileElement->GetType() == TILE_ELEMENT_TYPE_ENTRANCE && elementPos.z == tileElement->GetBaseZ())
+        if (tileElement->GetType() == TileElementType::Entrance && elementPos.z == tileElement->GetBaseZ())
             return tileElement;
     } while (!(tileElement++)->IsLastForTile());
 

@@ -36,28 +36,16 @@ constexpr const uint8_t OWNER_MASK = 0b00001111;
 
 #pragma pack(push, 1)
 
-enum
-{
-    TILE_ELEMENT_TYPE_SURFACE = (0 << 2),
-    TILE_ELEMENT_TYPE_PATH = (1 << 2),
-    TILE_ELEMENT_TYPE_TRACK = (2 << 2),
-    TILE_ELEMENT_TYPE_SMALL_SCENERY = (3 << 2),
-    TILE_ELEMENT_TYPE_ENTRANCE = (4 << 2),
-    TILE_ELEMENT_TYPE_WALL = (5 << 2),
-    TILE_ELEMENT_TYPE_LARGE_SCENERY = (6 << 2),
-    TILE_ELEMENT_TYPE_BANNER = (7 << 2),
-};
-
 enum class TileElementType : uint8_t
 {
-    Surface = (0 << 2),
-    Path = (1 << 2),
-    Track = (2 << 2),
-    SmallScenery = (3 << 2),
-    Entrance = (4 << 2),
-    Wall = (5 << 2),
-    LargeScenery = (6 << 2),
-    Banner = (7 << 2),
+    Surface = 0,
+    Path = 1,
+    Track = 2,
+    SmallScenery = 3,
+    Entrance = 4,
+    Wall = 5,
+    LargeScenery = 6,
+    Banner = 7,
 };
 
 struct TileElement;
@@ -80,8 +68,8 @@ struct TileElementBase
 
     void Remove();
 
-    uint8_t GetType() const;
-    void SetType(uint8_t newType);
+    TileElementType GetType() const;
+    void SetType(TileElementType newType);
 
     Direction GetDirection() const;
     void SetDirection(Direction direction);
@@ -111,8 +99,7 @@ struct TileElementBase
         if constexpr (std::is_same_v<TType, TileElement>)
             return reinterpret_cast<const TileElement*>(this);
         else
-            return static_cast<TileElementType>(GetType()) == TType::ElementType ? reinterpret_cast<const TType*>(this)
-                                                                                 : nullptr;
+            return GetType() == TType::ElementType ? reinterpret_cast<const TType*>(this) : nullptr;
     }
 
     template<typename TType> TType* as()
@@ -120,7 +107,7 @@ struct TileElementBase
         if constexpr (std::is_same_v<TType, TileElement>)
             return reinterpret_cast<TileElement*>(this);
         else
-            return static_cast<TileElementType>(GetType()) == TType::ElementType ? reinterpret_cast<TType*>(this) : nullptr;
+            return GetType() == TType::ElementType ? reinterpret_cast<TType*>(this) : nullptr;
     }
 
     const SurfaceElement* AsSurface() const
@@ -198,7 +185,7 @@ struct TileElement : public TileElementBase
     uint8_t pad_05[3];
     uint8_t pad_08[8];
 
-    void ClearAs(uint8_t newType);
+    void ClearAs(TileElementType newType);
 
     ride_id_t GetRideIndex() const;
 

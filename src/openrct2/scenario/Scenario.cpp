@@ -20,6 +20,9 @@
 #include "../config/Config.h"
 #include "../core/Guard.hpp"
 #include "../core/Random.hpp"
+#include "../entity/Duck.h"
+#include "../entity/Guest.h"
+#include "../entity/Staff.h"
 #include "../interface/Viewport.h"
 #include "../localisation/Date.h"
 #include "../localisation/Localisation.h"
@@ -32,8 +35,6 @@
 #include "../object/Object.h"
 #include "../object/ObjectList.h"
 #include "../object/ObjectManager.h"
-#include "../peep/Guest.h"
-#include "../peep/Staff.h"
 #include "../platform/platform.h"
 #include "../rct1/RCT1.h"
 #include "../rct12/RCT12.h"
@@ -43,7 +44,7 @@
 #include "../util/Util.h"
 #include "../windows/Intent.h"
 #include "../world/Climate.h"
-#include "../world/Duck.h"
+#include "../world/Entrance.h"
 #include "../world/Map.h"
 #include "../world/Park.h"
 #include "../world/Scenery.h"
@@ -563,7 +564,7 @@ static bool scenario_prepare_rides_for_save()
     tile_element_iterator_begin(&it);
     do
     {
-        if (it.element->GetType() == TILE_ELEMENT_TYPE_TRACK)
+        if (it.element->GetType() == TileElementType::Track)
         {
             markTrackAsIndestructible = false;
 
@@ -767,7 +768,7 @@ ObjectiveStatus Objective::Check10RollerCoastersLength() const
             {
                 if (ride_entry_has_category(rideEntry, RIDE_CATEGORY_ROLLERCOASTER) && !type_already_counted[ride.subtype])
                 {
-                    if ((ride_get_total_length(&ride) >> 16) >= MinimumLength)
+                    if ((ride.GetTotalLength() >> 16) >= MinimumLength)
                     {
                         type_already_counted[ride.subtype] = true;
                         rcs++;
