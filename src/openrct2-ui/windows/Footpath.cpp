@@ -24,6 +24,7 @@
 #include <openrct2/object/FootpathSurfaceObject.h>
 #include <openrct2/object/ObjectLimits.h>
 #include <openrct2/object/ObjectManager.h>
+#include <openrct2/object/ObjectRepository.h>
 #include <openrct2/platform/platform.h>
 #include <openrct2/sprites.h>
 #include <openrct2/world/Footpath.h>
@@ -717,60 +718,60 @@ static void WindowFootpathPaint(rct_window* w, rct_drawpixelinfo* dpi)
     std::string pathStr = "empty";
     bool sourceFirstGen = false;
     if (gFootpathSelection.LegacyPath == OBJECT_ENTRY_INDEX_NULL)
-        {
-            auto selectedPath = gFootpathSelection.GetSelectedSurface();
-            auto pathType = object_entry_get_object(ObjectType::FootpathSurface, selectedPath);
-            auto pathID = pathType->GetLegacyIdentifier();
-            auto& objectRepository = OpenRCT2::GetContext()->GetObjectRepository();
-            auto pathRepObj = objectRepository.FindObject(pathID);
-            auto sourceGame = pathRepObj->GetFirstSourceGame();
-            sourceFirstGen = (sourceGame == ObjectSourceGame::RCT1 || sourceGame == ObjectSourceGame::AddedAttractions || sourceGame == ObjectSourceGame::LoopyLandscapes) ? true : false;
-            pathStr = pathType->GetName();
-        }
+    {
+        auto selectedPath = gFootpathSelection.GetSelectedSurface();
+        auto pathType = object_entry_get_object(ObjectType::FootpathSurface, selectedPath);
+        auto pathID = pathType->GetLegacyIdentifier();
+        auto& objectRepository = OpenRCT2::GetContext()->GetObjectRepository();
+        auto pathRepObj = objectRepository.FindObject(pathID);
+        auto sourceGame = pathRepObj->GetFirstSourceGame();
+        sourceFirstGen = (sourceGame == ObjectSourceGame::RCT1 || sourceGame == ObjectSourceGame::AddedAttractions || sourceGame == ObjectSourceGame::LoopyLandscapes) ? true : false;
+        pathStr = pathType->GetName();
+    }
     else
+    {
+        auto& objManager = OpenRCT2::GetContext()->GetObjectManager();
+        auto* pathObj = objManager.GetLoadedObject(ObjectType::Paths, gFootpathSelection.LegacyPath);
+        if (pathObj != nullptr)
         {
-            auto& objManager = OpenRCT2::GetContext()->GetObjectManager();
-            auto* pathObj = objManager.GetLoadedObject(ObjectType::Paths, gFootpathSelection.LegacyPath);
-            if (pathObj != nullptr)
-            {
-                pathStr = pathObj->GetName();
-            }
+            pathStr = pathObj->GetName();
         }
+    }
     auto pathTestStr = pathStr;
     std::transform(pathTestStr.begin(), pathTestStr.end(), pathTestStr.begin(), ::tolower);
     if (pathTestStr.find("footpath") != std::string::npos)
-        {
-            pathStr.resize(pathStr.size()-9);
-            pathTestStr = pathStr;
-        }
+    {
+        pathStr.resize(pathStr.size()-9);
+        pathTestStr = pathStr;
+    }
     if (pathTestStr.find("path") != std::string::npos)
-        {
-            pathStr.resize(pathStr.size()-5);
-        }
+    {
+        pathStr.resize(pathStr.size()-5);
+    }
     auto pathName = pathStr.c_str();
     if (sourceFirstGen)
-        {
-            screenCoords = w->windowPos
-                + ScreenCoordsXY{ window_footpath_widgets[WIDX_CONSTRUCT].midX(), window_footpath_widgets[WIDX_CONSTRUCT].top + 3 };
-            auto ft = Formatter();
-            ft.Add<rct_string_id>(STR_STRING);
-            ft.Add<const char*>("RCT 1");
-            DrawTextBasic(dpi, screenCoords + ScreenCoordsXY{ 0, 12}, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
-            ft = Formatter();
-            ft.Add<rct_string_id>(STR_STRING);
-            ft.Add<const char*>(pathName);
-            DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
-            
-        }
+    {
+        screenCoords = w->windowPos
+            + ScreenCoordsXY{ window_footpath_widgets[WIDX_CONSTRUCT].midX(), window_footpath_widgets[WIDX_CONSTRUCT].top + 3 };
+        auto ft = Formatter();
+        ft.Add<rct_string_id>(STR_STRING);
+        ft.Add<const char*>("RCT 1");
+        DrawTextBasic(dpi, screenCoords + ScreenCoordsXY{ 0, 12}, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
+        ft = Formatter();
+        ft.Add<rct_string_id>(STR_STRING);
+        ft.Add<const char*>(pathName);
+        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
+        
+    }
     else
-        {
-            screenCoords = w->windowPos
-                + ScreenCoordsXY{ window_footpath_widgets[WIDX_CONSTRUCT].midX(), window_footpath_widgets[WIDX_CONSTRUCT].top + 3 };
-            auto ft = Formatter();
-            ft.Add<rct_string_id>(STR_STRING);
-            ft.Add<const char*>(pathName);
-            DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
-        }
+    {
+        screenCoords = w->windowPos
+            + ScreenCoordsXY{ window_footpath_widgets[WIDX_CONSTRUCT].midX(), window_footpath_widgets[WIDX_CONSTRUCT].top + 3 };
+        auto ft = Formatter();
+        ft.Add<rct_string_id>(STR_STRING);
+        ft.Add<const char*>(pathName);
+        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
+    }
 }
 
 /**
