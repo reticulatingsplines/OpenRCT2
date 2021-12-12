@@ -725,7 +725,10 @@ static void WindowFootpathPaint(rct_window* w, rct_drawpixelinfo* dpi)
         auto& objectRepository = OpenRCT2::GetContext()->GetObjectRepository();
         auto pathRepObj = objectRepository.FindObject(pathID);
         auto sourceGame = pathRepObj->GetFirstSourceGame();
-        sourceFirstGen = (sourceGame == ObjectSourceGame::RCT1 || sourceGame == ObjectSourceGame::AddedAttractions || sourceGame == ObjectSourceGame::LoopyLandscapes) ? true : false;
+        sourceFirstGen = (sourceGame == ObjectSourceGame::RCT1 || sourceGame == ObjectSourceGame::AddedAttractions
+                          || sourceGame == ObjectSourceGame::LoopyLandscapes)
+            ? true
+            : false;
         pathStr = pathType->GetName();
     }
     else
@@ -741,12 +744,12 @@ static void WindowFootpathPaint(rct_window* w, rct_drawpixelinfo* dpi)
     std::transform(pathTestStr.begin(), pathTestStr.end(), pathTestStr.begin(), ::tolower);
     if (pathTestStr.find("footpath") != std::string::npos)
     {
-        pathStr.resize(pathStr.size()-9);
+        pathStr.resize(pathStr.size() - 9);
         pathTestStr = pathStr;
     }
     if (pathTestStr.find("path") != std::string::npos)
     {
-        pathStr.resize(pathStr.size()-5);
+        pathStr.resize(pathStr.size() - 5);
     }
     auto pathName = pathStr.c_str();
     if (sourceFirstGen)
@@ -756,12 +759,11 @@ static void WindowFootpathPaint(rct_window* w, rct_drawpixelinfo* dpi)
         auto ft = Formatter();
         ft.Add<rct_string_id>(STR_STRING);
         ft.Add<const char*>("RCT 1");
-        DrawTextBasic(dpi, screenCoords + ScreenCoordsXY{ 0, 12}, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
+        DrawTextBasic(dpi, screenCoords + ScreenCoordsXY{ 0, 12 }, STR_WINDOW_COLOUR_2_STRINGID, ft, { TextAlignment::CENTRE });
         ft = Formatter();
         ft.Add<rct_string_id>(STR_STRING);
         ft.Add<const char*>(pathName);
-        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
-        
+        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, { TextAlignment::CENTRE });
     }
     else
     {
@@ -770,7 +772,7 @@ static void WindowFootpathPaint(rct_window* w, rct_drawpixelinfo* dpi)
         auto ft = Formatter();
         ft.Add<rct_string_id>(STR_STRING);
         ft.Add<const char*>(pathName);
-        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, {TextAlignment::CENTRE });
+        DrawTextEllipsised(dpi, screenCoords, 85, STR_WINDOW_COLOUR_2_STRINGID, ft, { TextAlignment::CENTRE });
     }
 }
 
