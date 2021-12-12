@@ -24,6 +24,7 @@
 #include <openrct2/object/FootpathSurfaceObject.h>
 #include <openrct2/object/ObjectLimits.h>
 #include <openrct2/object/ObjectManager.h>
+#include <openrct2/object/ObjectRepository.h>
 #include <openrct2/platform/platform.h>
 #include <openrct2/sprites.h>
 #include <openrct2/world/Footpath.h>
