@@ -55,6 +55,7 @@
     <ClInclude Include="scripting\CustomMenu.h" />
     <ClInclude Include="scripting\CustomWindow.h" />
     <ClInclude Include="scripting\ScGraphicsContext.hpp" />
+    <ClInclude Include="scripting\ScImageManager.hpp" />
     <ClInclude Include="scripting\ScTileSelection.hpp" />
     <ClInclude Include="scripting\ScTitleSequence.hpp" />
     <ClInclude Include="scripting\ScUi.hpp" />
@@ -155,7 +156,9 @@
     <ClCompile Include="windows\ObjectLoadError.cpp" />
     <ClCompile Include="windows\Options.cpp" />
     <ClCompile Include="windows\Park.cpp" />
+    <ClCompile Include="windows\PatrolArea.cpp" />
     <ClCompile Include="windows\Player.cpp" />
+    <ClCompile Include="windows\RefurbishRidePrompt.cpp" />
     <ClCompile Include="windows\Research.cpp" />
     <ClCompile Include="windows\Ride.cpp" />
     <ClCompile Include="windows\RideConstruction.cpp" />

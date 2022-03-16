@@ -12,18 +12,18 @@
 #    include "ScMap.hpp"
 
 #    include "../../../common.h"
-#    include "../../../peep/Guest.h"
-#    include "../../../peep/Staff.h"
+#    include "../../../entity/Balloon.h"
+#    include "../../../entity/Duck.h"
+#    include "../../../entity/EntityList.h"
+#    include "../../../entity/Fountain.h"
+#    include "../../../entity/Guest.h"
+#    include "../../../entity/Litter.h"
+#    include "../../../entity/MoneyEffect.h"
+#    include "../../../entity/Particle.h"
+#    include "../../../entity/Staff.h"
 #    include "../../../ride/Ride.h"
 #    include "../../../ride/TrainManager.h"
-#    include "../../../world/Balloon.h"
-#    include "../../../world/Duck.h"
-#    include "../../../world/EntityList.h"
-#    include "../../../world/Fountain.h"
-#    include "../../../world/Litter.h"
 #    include "../../../world/Map.h"
-#    include "../../../world/MoneyEffect.h"
-#    include "../../../world/Particle.h"
 #    include "../../Duktape.hpp"
 #    include "../entity/ScEntity.hpp"
 #    include "../entity/ScGuest.hpp"
@@ -42,7 +42,7 @@ namespace OpenRCT2::Scripting
 
     DukValue ScMap::size_get() const
     {
-        return ToDuk(_context, CoordsXY{ gMapSize, gMapSize });
+        return ToDuk(_context, gMapSize);
     }
 
     int32_t ScMap::numRides_get() const
@@ -69,7 +69,7 @@ namespace OpenRCT2::Scripting
     std::shared_ptr<ScRide> ScMap::getRide(int32_t id) const
     {
         auto rideManager = GetRideManager();
-        auto ride = rideManager[static_cast<ride_id_t>(id)];
+        auto ride = rideManager[RideId::FromUnderlying(id)];
         if (ride != nullptr)
         {
             return std::make_shared<ScRide>(ride->id);
@@ -87,7 +87,7 @@ namespace OpenRCT2::Scripting
     {
         if (id >= 0 && id < MAX_ENTITIES)
         {
-            auto spriteId = static_cast<uint16_t>(id);
+            auto spriteId = EntityId::FromUnderlying(id);
             auto sprite = GetEntity(spriteId);
             if (sprite != nullptr && sprite->Type != EntityType::Null)
             {
@@ -112,7 +112,7 @@ namespace OpenRCT2::Scripting
         {
             for (auto trainHead : TrainManager::View())
             {
-                for (auto carId = trainHead->sprite_index; carId != SPRITE_INDEX_NULL;)
+                for (auto carId = trainHead->sprite_index; !carId.IsNull();)
                 {
                     auto car = GetEntity<Vehicle>(carId);
                     result.push_back(GetObjectAsDukValue(_context, std::make_shared<ScVehicle>(carId)));

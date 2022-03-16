@@ -41,7 +41,7 @@ void Plugin::Load()
         LoadCodeFromFile();
     }
 
-    std::string projectedVariables = "console,context,date,map,network,park";
+    std::string projectedVariables = "console,context,date,map,network,park,profiler";
     if (!gOpenRCT2Headless)
     {
         projectedVariables += ",ui";
@@ -96,9 +96,23 @@ void Plugin::Start()
     _hasStarted = true;
 }
 
-void Plugin::Stop()
+void Plugin::StopBegin()
 {
+    _isStopping = true;
+}
+
+void Plugin::StopEnd()
+{
+    _isStopping = false;
     _hasStarted = false;
+}
+
+void Plugin::ThrowIfStopping() const
+{
+    if (IsStopping())
+    {
+        duk_error(_context, DUK_ERR_ERROR, "Plugin is stopping.");
+    }
 }
 
 void Plugin::LoadCodeFromFile()

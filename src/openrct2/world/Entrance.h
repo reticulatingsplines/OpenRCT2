@@ -34,14 +34,19 @@ enum
     ENTRANCE_ELEMENT_FLAGS2_LEGACY_PATH_ENTRY = (1 << 0),
 };
 
+namespace EntranceSequence
+{
+    constexpr const uint8_t Centre = 0;
+    constexpr const uint8_t Left = 1;
+    constexpr const uint8_t Right = 2;
+}; // namespace EntranceSequence
+
 constexpr const uint8_t ParkEntranceHeight = 12 * COORDS_Z_STEP;
 constexpr const uint8_t RideEntranceHeight = 7 * COORDS_Z_STEP;
 constexpr const uint8_t RideExitHeight = 5 * COORDS_Z_STEP;
 
 extern bool gParkEntranceGhostExists;
 extern CoordsXYZD gParkEntranceGhostPosition;
-
-#define MAX_PARK_ENTRANCES 256
 
 constexpr int32_t MaxRideEntranceOrExitHeight = 244 * COORDS_Z_STEP;
 

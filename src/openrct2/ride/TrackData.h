@@ -74,6 +74,7 @@ constexpr const dodgems_track_size DodgemsTrackSize(track_type_t type)
 
 struct TrackElementDescriptor
 {
+    rct_string_id Description;
     rct_track_coordinates Coordinates;
 
     rct_preview_track* Block;
@@ -96,7 +97,6 @@ namespace OpenRCT2
 {
     namespace TrackMetaData
     {
-        void Init();
         const TrackElementDescriptor& GetTrackElementDescriptor(const uint32_t type);
     } // namespace TrackMetaData
 } // namespace OpenRCT2

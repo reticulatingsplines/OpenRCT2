@@ -14,12 +14,13 @@
 #include "core/FileStream.h"
 #include "core/Imaging.h"
 #include "core/Json.hpp"
+#include "core/Path.hpp"
 #include "drawing/Drawing.h"
 #include "drawing/ImageImporter.h"
 #include "object/ObjectLimits.h"
 #include "object/ObjectManager.h"
 #include "object/ObjectRepository.h"
-#include "platform/platform.h"
+#include "platform/Platform.h"
 #include "util/Util.h"
 
 #include <cmath>
@@ -196,7 +197,7 @@ static bool SpriteImageExport(const rct_g1_element& spriteElement, const char* o
     dpi.width = spriteElement.width;
     dpi.height = spriteElement.height;
     dpi.pitch = 0;
-    dpi.zoom_level = 0;
+    dpi.zoom_level = ZoomLevel{ 0 };
 
     DrawSpriteArgs args(
         ImageId(), PaletteMap::GetDefault(), spriteElement, 0, 0, spriteElement.width, spriteElement.height, pixels);
@@ -224,28 +225,28 @@ static bool SpriteImageExport(const rct_g1_element& spriteElement, const char* o
 }
 
 static std::optional<ImageImporter::ImportResult> SpriteImageImport(
-    const char* path, int16_t x_offset, int16_t y_offset, bool keep_palette, bool forceBmp, int32_t mode)
+    const char* path, int16_t x_offset, int16_t y_offset, ImageImporter::Palette palette, bool forceBmp,
+    ImageImporter::ImportMode mode)
 {
     try
     {
         auto format = IMAGE_FORMAT::PNG_32;
-        auto flags = ImageImporter::IMPORT_FLAGS::NONE;
+        auto flags = ImageImporter::ImportFlags::None;
 
         if (!forceBmp)
         {
-            flags = ImageImporter::IMPORT_FLAGS::RLE;
+            flags = ImageImporter::ImportFlags::RLE;
         }
 
-        if (keep_palette)
+        if (palette == ImageImporter::Palette::KeepIndices)
         {
             format = IMAGE_FORMAT::PNG;
-            flags = static_cast<ImageImporter::IMPORT_FLAGS>(flags | ImageImporter::IMPORT_FLAGS::KEEP_PALETTE);
         }
 
         ImageImporter importer;
         auto image = Imaging::ReadFromFile(path, format);
 
-        return importer.Import(image, x_offset, y_offset, flags, static_cast<ImageImporter::IMPORT_MODE>(mode));
+        return importer.Import(image, x_offset, y_offset, palette, flags, mode);
     }
     catch (const std::exception& e)
     {
@@ -361,7 +362,7 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
         safe_strcpy(outputPath, argv[2], MAX_PATH);
         path_end_with_separator(outputPath, MAX_PATH);
 
-        if (!platform_ensure_directory_exists(outputPath))
+        if (!Platform::EnsureDirectoryExists(outputPath))
         {
             fprintf(stderr, "Unable to create directory.\n");
             return -1;
@@ -454,7 +455,7 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
         safe_strcpy(outputPath, argv[2], MAX_PATH);
         path_end_with_separator(outputPath, MAX_PATH);
 
-        if (!platform_ensure_directory_exists(outputPath))
+        if (!Platform::EnsureDirectoryExists(outputPath))
         {
             fprintf(stderr, "Unable to create directory.\n");
             return -1;
@@ -548,7 +549,8 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
             }
         }
 
-        auto importResult = SpriteImageImport(imagePath, x_offset, y_offset, false, false, gSpriteMode);
+        auto importResult = SpriteImageImport(
+            imagePath, x_offset, y_offset, ImageImporter::Palette::OpenRCT2, false, gSpriteMode);
         if (!importResult.has_value())
             return -1;
 
@@ -577,7 +579,7 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
 
         const char* spriteFilePath = argv[1];
         const char* spriteDescriptionPath = argv[2];
-        char* directoryPath = path_get_directory(spriteDescriptionPath);
+        const auto directoryPath = Path::GetDirectory(spriteDescriptionPath);
 
         json_t jsonSprites = Json::ReadFromFile(spriteDescriptionPath);
         if (jsonSprites.is_null())
@@ -624,14 +626,15 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
             json_t x_offset = jsonSprite["x_offset"];
             json_t y_offset = jsonSprite["y_offset"];
 
-            bool keep_palette = Json::GetString(jsonSprite["palette"]) == "keep";
+            auto palette = (Json::GetString(jsonSprite["palette"]) == "keep") ? ImageImporter::Palette::KeepIndices
+                                                                              : ImageImporter::Palette::OpenRCT2;
             bool forceBmp = !jsonSprite["palette"].is_null() && Json::GetBoolean(jsonSprite["forceBmp"]);
 
-            auto imagePath = platform_get_absolute_path(strPath.c_str(), directoryPath);
+            auto imagePath = Path::GetAbsolute(Path::Combine(directoryPath, strPath));
 
             auto importResult = SpriteImageImport(
-                imagePath.c_str(), Json::GetNumber<int16_t>(x_offset), Json::GetNumber<int16_t>(y_offset), keep_palette,
-                forceBmp, gSpriteMode);
+                imagePath.c_str(), Json::GetNumber<int16_t>(x_offset), Json::GetNumber<int16_t>(y_offset), palette, forceBmp,
+                gSpriteMode);
             if (importResult == std::nullopt)
             {
                 fprintf(stderr, "Could not import image file: %s\nCanceling\n", imagePath.c_str());
@@ -649,8 +652,6 @@ int32_t cmdline_for_sprite(const char** argv, int32_t argc)
             log_error("Could not save sprite file, cancelling.");
             return -1;
         }
-
-        free(directoryPath);
 
         fprintf(stdout, "Finished\n");
         return 1;

@@ -14,6 +14,7 @@
 #    include "../Game.h"
 #    include "../common.h"
 #    include "../config/Config.h"
+#    include "../entity/EntityRegistry.h"
 #    include "../interface/Viewport.h"
 #    include "../interface/Window.h"
 #    include "../interface/Window_internal.h"
@@ -22,7 +23,6 @@
 #    include "../ride/Vehicle.h"
 #    include "../util/Util.h"
 #    include "../world/Climate.h"
-#    include "../world/Entity.h"
 #    include "../world/Map.h"
 #    include "Drawing.h"
 
@@ -77,12 +77,12 @@ static uint32_t LightListCurrentCountFront;
 static int16_t _current_view_x_front = 0;
 static int16_t _current_view_y_front = 0;
 static uint8_t _current_view_rotation_front = 0;
-static ZoomLevel _current_view_zoom_front = 0;
+static ZoomLevel _current_view_zoom_front{ 0 };
 static int16_t _current_view_x_back = 0;
 static int16_t _current_view_y_back = 0;
 static uint8_t _current_view_rotation_back = 0;
-static ZoomLevel _current_view_zoom_back = 0;
-static ZoomLevel _current_view_zoom_back_delay = 0;
+static ZoomLevel _current_view_zoom_back{ 0 };
+static ZoomLevel _current_view_zoom_back_delay{ 0 };
 
 static GamePalette gPalette_light;
 
@@ -205,8 +205,8 @@ void lightfx_prepare_light_list()
         int32_t posOnScreenX = entry->ViewCoords.x - _current_view_x_front;
         int32_t posOnScreenY = entry->ViewCoords.y - _current_view_y_front;
 
-        posOnScreenX = posOnScreenX / _current_view_zoom_front;
-        posOnScreenY = posOnScreenY / _current_view_zoom_front;
+        posOnScreenX = _current_view_zoom_front.ApplyInversedTo(posOnScreenX);
+        posOnScreenY = _current_view_zoom_front.ApplyInversedTo(posOnScreenY);
 
         if ((posOnScreenX < -128) || (posOnScreenY < -128) || (posOnScreenX > _pixelInfo.width + 128)
             || (posOnScreenY > _pixelInfo.height + 128))
@@ -266,7 +266,7 @@ void lightfx_prepare_light_list()
                 break;
         }
 
-        int32_t mapFrontDiv = 1 * _current_view_zoom_front;
+        int32_t mapFrontDiv = _current_view_zoom_front.ApplyTo(1);
 
         // clang-format off
         static int16_t offsetPattern[26] = {
@@ -309,8 +309,8 @@ void lightfx_prepare_light_list()
                     dpi.width = 1;
 
                     paint_session* session = PaintSessionAlloc(&dpi, w->viewport->flags);
-                    PaintSessionGenerate(session);
-                    PaintSessionArrange(session);
+                    PaintSessionGenerate(*session);
+                    PaintSessionArrange(*session);
                     auto info = set_interaction_info_from_paint_session(session, ViewportInteractionItemAll);
                     PaintSessionFree(session);
 
@@ -356,13 +356,13 @@ void lightfx_prepare_light_list()
                 {
                     if (lightIntensityOccluded == 100)
                         break;
-                    if (_current_view_zoom_front > 2)
+                    if (_current_view_zoom_front > ZoomLevel{ 2 })
                         break;
                     totalSamplePoints += 4;
                 }
                 else if (pat == 4)
                 {
-                    if (_current_view_zoom_front > 1)
+                    if (_current_view_zoom_front > ZoomLevel{ 1 })
                         break;
                     if (lightIntensityOccluded == 0 || lightIntensityOccluded == 500)
                         break;
@@ -390,7 +390,7 @@ void lightfx_prepare_light_list()
         entry->LightIntensity = std::max<uint32_t>(
             0x00, entry->LightIntensity - static_cast<int8_t>(_current_view_zoom_front) * 5);
 
-        if (_current_view_zoom_front > 0)
+        if (_current_view_zoom_front > ZoomLevel{ 0 })
         {
             if (GetLightTypeSize(entry->Type) < static_cast<int8_t>(_current_view_zoom_front))
             {
@@ -476,8 +476,8 @@ void lightfx_render_lights_to_frontbuffer()
         {
             inRectCentreX -= _current_view_x_front;
             inRectCentreY -= _current_view_y_front;
-            inRectCentreX = inRectCentreX / _current_view_zoom_front;
-            inRectCentreY = inRectCentreY / _current_view_zoom_front;
+            inRectCentreX = _current_view_zoom_front.ApplyInversedTo(inRectCentreX);
+            inRectCentreY = _current_view_zoom_front.ApplyInversedTo(inRectCentreY);
         }
 
         switch (entry->Type)
@@ -677,7 +677,7 @@ static void LightfxAdd3DLight(const CoordsXYZ& loc, const LightType lightType)
 
 void LightfxAdd3DLight(const EntityBase& entity, const uint8_t id, const CoordsXYZ& loc, const LightType lightType)
 {
-    LightfxAdd3DLight(entity.sprite_index, LightFXQualifier::Entity, id, loc, lightType);
+    LightfxAdd3DLight(entity.sprite_index.ToUnderlying(), LightFXQualifier::Entity, id, loc, lightType);
 }
 
 void lightfx_add_3d_light_magic_from_drawing_tile(
@@ -736,7 +736,7 @@ void lightfx_add_lights_magic_vehicle(const Vehicle* vehicle)
         case RIDE_TYPE_WATER_COASTER:
         {
             Vehicle* vehicle_draw = vehicle->TrainHead();
-            auto nextVeh = GetEntity<Vehicle>(vehicle_draw->next_vehicle_on_train);
+            auto* nextVeh = GetEntity<Vehicle>(vehicle_draw->next_vehicle_on_train);
             if (nextVeh != nullptr)
             {
                 vehicle_draw = nextVeh;

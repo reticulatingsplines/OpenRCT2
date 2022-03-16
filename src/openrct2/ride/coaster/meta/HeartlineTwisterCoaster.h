@@ -19,9 +19,9 @@ constexpr const RideTypeDescriptor HeartlineTwisterCoasterRTD =
 {
     SET_FIELD(AlternateType, RIDE_TYPE_NULL),
     SET_FIELD(Category, RIDE_CATEGORY_ROLLERCOASTER),
-    SET_FIELD(EnabledTrackPieces, (1ULL << TRACK_STRAIGHT) | (1ULL << TRACK_STATION_END) | (1ULL << TRACK_LIFT_HILL) | (1ULL << TRACK_LIFT_HILL_STEEP) | (1ULL << TRACK_SLOPE) | (1ULL << TRACK_SLOPE_STEEP) | (1ULL << TRACK_HEARTLINE_ROLL) | (1ULL << TRACK_HEARTLINE_TRANSFER)),
-    SET_FIELD(ExtraTrackPieces, 0),
-    SET_FIELD(CoveredTrackPieces, 0),
+    SET_FIELD(EnabledTrackPieces, {TRACK_STRAIGHT, TRACK_STATION_END, TRACK_LIFT_HILL, TRACK_LIFT_HILL_STEEP, TRACK_SLOPE, TRACK_SLOPE_STEEP, TRACK_HEARTLINE_ROLL, TRACK_HEARTLINE_TRANSFER}),
+    SET_FIELD(ExtraTrackPieces, {}),
+    SET_FIELD(CoveredTrackPieces, {}),
     SET_FIELD(StartTrackPiece, TrackElemType::EndStation),
     SET_FIELD(TrackPaintFunction, get_track_paint_function_heartline_twister_rc),
     SET_FIELD(Flags, RIDE_TYPE_FLAGS_TRACK_HAS_3_COLOURS | RIDE_TYPE_FLAG_HAS_LEAVE_WHEN_ANOTHER_VEHICLE_ARRIVES_AT_STATION |
@@ -43,7 +43,7 @@ constexpr const RideTypeDescriptor HeartlineTwisterCoasterRTD =
     SET_FIELD(DefaultPrices, { 15, 20 }),
     SET_FIELD(DefaultMusic, MUSIC_OBJECT_TECHNO),
     SET_FIELD(PhotoItem, ShopItem::Photo),
-    SET_FIELD(BonusValue, 35),
+    SET_FIELD(BonusValue, 70),
     SET_FIELD(ColourPresets, TRACK_COLOUR_PRESETS(
         { COLOUR_WHITE, COLOUR_LIGHT_BLUE, COLOUR_WHITE },
         { COLOUR_BORDEAUX_RED, COLOUR_YELLOW, COLOUR_BLACK },

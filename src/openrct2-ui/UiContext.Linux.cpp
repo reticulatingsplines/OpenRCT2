@@ -18,7 +18,7 @@
 #    include <openrct2/core/String.hpp>
 #    include <openrct2/core/StringBuilder.h>
 #    include <openrct2/localisation/Localisation.h>
-#    include <openrct2/platform/Platform2.h>
+#    include <openrct2/platform/Platform.h>
 #    include <openrct2/ui/UiContext.h>
 #    include <sstream>
 #    include <stdexcept>
@@ -138,7 +138,7 @@ namespace OpenRCT2::Ui
             {
                 case DIALOG_TYPE::KDIALOG:
                 {
-                    std::string action = (desc.Type == FILE_DIALOG_TYPE::OPEN) ? "--getopenfilename" : "--getsavefilename";
+                    std::string action = (desc.Type == FileDialogType::Open) ? "--getopenfilename" : "--getsavefilename";
                     std::string filter = GetKDialogFilterString(desc.Filters);
                     std::string cmd = String::StdFormat(
                         "%s --title '%s' %s '%s' '%s'", executablePath.c_str(), desc.Title.c_str(), action.c_str(),
@@ -154,7 +154,7 @@ namespace OpenRCT2::Ui
                 {
                     std::string action = "--file-selection";
                     std::string flags;
-                    if (desc.Type == FILE_DIALOG_TYPE::SAVE)
+                    if (desc.Type == FileDialogType::Save)
                     {
                         flags = "--confirm-overwrite --save";
                     }
@@ -165,7 +165,7 @@ namespace OpenRCT2::Ui
                     std::string output;
                     if (Platform::Execute(cmd, &output) == 0)
                     {
-                        if (desc.Type == FILE_DIALOG_TYPE::SAVE)
+                        if (desc.Type == FileDialogType::Save)
                         {
                             // The default file extension is taken from the **first** available filter, since
                             // we cannot obtain it from zenity's output. This means that the FileDialogDesc::Filters
@@ -173,10 +173,10 @@ namespace OpenRCT2::Ui
                             std::string pattern = desc.Filters[0].Pattern;
                             std::string defaultExtension = pattern.substr(pattern.find_last_of('.'));
 
-                            const utf8* filename = Path::GetFileName(output.c_str());
+                            const auto filename = Path::GetFileName(output.c_str());
 
                             // If there is no extension, append the pattern
-                            const utf8* extension = Path::GetExtension(filename);
+                            const auto extension = Path::GetExtension(filename);
                             result = output;
                             if (extension[0] == '\0' && !defaultExtension.empty())
                             {
@@ -197,14 +197,14 @@ namespace OpenRCT2::Ui
 
             if (!result.empty())
             {
-                if (desc.Type == FILE_DIALOG_TYPE::OPEN && access(result.c_str(), F_OK) == -1)
+                if (desc.Type == FileDialogType::Open && access(result.c_str(), F_OK) == -1)
                 {
                     std::string msg = String::StdFormat(
                         "\"%s\" not found: %s, please choose another file\n", result.c_str(), strerror(errno));
                     ShowMessageBox(window, msg);
                     return ShowFileDialog(window, desc);
                 }
-                if (desc.Type == FILE_DIALOG_TYPE::SAVE && access(result.c_str(), F_OK) != -1 && dtype == DIALOG_TYPE::KDIALOG)
+                if (desc.Type == FileDialogType::Save && access(result.c_str(), F_OK) != -1 && dtype == DIALOG_TYPE::KDIALOG)
                 {
                     std::string cmd = String::StdFormat("%s --yesno \"Overwrite %s?\"", executablePath.c_str(), result.c_str());
                     if (Platform::Execute(cmd) != 0)

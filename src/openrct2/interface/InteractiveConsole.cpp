@@ -28,6 +28,10 @@
 #include "../core/String.hpp"
 #include "../drawing/Drawing.h"
 #include "../drawing/Font.h"
+#include "../drawing/Image.h"
+#include "../entity/EntityList.h"
+#include "../entity/EntityRegistry.h"
+#include "../entity/Staff.h"
 #include "../interface/Chat.h"
 #include "../interface/Colour.h"
 #include "../interface/Window_internal.h"
@@ -40,18 +44,16 @@
 #include "../object/ObjectList.h"
 #include "../object/ObjectManager.h"
 #include "../object/ObjectRepository.h"
-#include "../peep/Staff.h"
-#include "../platform/platform.h"
+#include "../platform/Platform.h"
+#include "../profiling/Profiling.h"
 #include "../ride/Ride.h"
 #include "../ride/RideData.h"
 #include "../ride/Vehicle.h"
 #include "../util/Util.h"
 #include "../windows/Intent.h"
 #include "../world/Climate.h"
-#include "../world/EntityList.h"
 #include "../world/Park.h"
 #include "../world/Scenery.h"
-#include "../world/Sprite.h"
 #include "Viewport.h"
 
 #include <algorithm>
@@ -194,7 +196,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    int32_t res = set_operating_setting(static_cast<ride_id_t>(ride_index), RideSetSetting::RideType, type);
+                    int32_t res = set_operating_setting(RideId::FromUnderlying(ride_index), RideSetSetting::RideType, type);
                     if (res == MONEY32_UNDEFINED)
                     {
                         if (!gCheatsAllowArbitraryRideTypeChanges)
@@ -224,7 +226,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    auto ride = get_ride(static_cast<ride_id_t>(ride_index));
+                    auto ride = get_ride(RideId::FromUnderlying(ride_index));
                     if (mode >= static_cast<uint8_t>(RideMode::Count))
                     {
                         console.WriteFormatLine("Invalid ride mode.");
@@ -256,7 +258,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    auto ride = get_ride(static_cast<ride_id_t>(ride_index));
+                    auto ride = get_ride(RideId::FromUnderlying(ride_index));
                     if (mass <= 0)
                     {
                         console.WriteFormatLine("Friction value must be strictly positive");
@@ -294,7 +296,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    auto ride = get_ride(static_cast<ride_id_t>(ride_index));
+                    auto ride = get_ride(RideId::FromUnderlying(ride_index));
                     if (excitement <= 0)
                     {
                         console.WriteFormatLine("Excitement value must be strictly positive");
@@ -325,7 +327,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    auto ride = get_ride(static_cast<ride_id_t>(ride_index));
+                    auto ride = get_ride(RideId::FromUnderlying(ride_index));
                     if (intensity <= 0)
                     {
                         console.WriteFormatLine("Intensity value must be strictly positive");
@@ -356,7 +358,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                 }
                 else
                 {
-                    auto ride = get_ride(static_cast<ride_id_t>(ride_index));
+                    auto ride = get_ride(RideId::FromUnderlying(ride_index));
                     if (nausea <= 0)
                     {
                         console.WriteFormatLine("Nausea value must be strictly positive");
@@ -426,7 +428,7 @@ static int32_t cc_rides(InteractiveConsole& console, const arguments_t& argv)
                     }
                     else
                     {
-                        auto rideSetPrice = RideSetPriceAction(static_cast<ride_id_t>(rideId), price, true);
+                        auto rideSetPrice = RideSetPriceAction(RideId::FromUnderlying(rideId), price, true);
                         GameActions::Execute(&rideSetPrice);
                     }
                 }
@@ -480,7 +482,7 @@ static int32_t cc_staff(InteractiveConsole& console, const arguments_t& argv)
 
                 if (int_valid[0] && int_valid[1])
                 {
-                    Peep* peep = GetEntity<Peep>(int_val[0]);
+                    Peep* peep = GetEntity<Peep>(EntityId::FromUnderlying(int_val[0]));
                     if (peep != nullptr)
                     {
                         peep->Energy = int_val[1];
@@ -499,7 +501,7 @@ static int32_t cc_staff(InteractiveConsole& console, const arguments_t& argv)
                     console.WriteLineError("Invalid staff ID");
                     return 1;
                 }
-                auto staff = GetEntity<Staff>(int_val[0]);
+                auto staff = GetEntity<Staff>(EntityId::FromUnderlying(int_val[0]));
                 if (staff == nullptr)
                 {
                     console.WriteLineError("Invalid staff ID");
@@ -517,7 +519,7 @@ static int32_t cc_staff(InteractiveConsole& console, const arguments_t& argv)
                 }
 
                 EntertainerCostume costume = static_cast<EntertainerCostume>(int_val[1]);
-                auto staffSetCostumeAction = StaffSetCostumeAction(int_val[0], costume);
+                auto staffSetCostumeAction = StaffSetCostumeAction(EntityId::FromUnderlying(int_val[0]), costume);
                 GameActions::Execute(&staffSetCostumeAction);
             }
         }
@@ -1105,7 +1107,7 @@ static int32_t cc_load_object(InteractiveConsole& console, const arguments_t& ar
 
             rideEntry = get_ride_entry(groupIndex);
 
-            for (int32_t j = 0; j < MAX_RIDE_TYPES_PER_RIDE_ENTRY; j++)
+            for (int32_t j = 0; j < RCT2::ObjectLimits::MaxRideTypesPerRideEntry; j++)
             {
                 rideType = rideEntry->ride_type[j];
                 if (rideType != RIDE_TYPE_NULL)
@@ -1242,7 +1244,7 @@ static int32_t cc_remove_unused_objects(InteractiveConsole& console, [[maybe_unu
 
 static int32_t cc_remove_floating_objects(InteractiveConsole& console, const arguments_t& argv)
 {
-    uint16_t result = remove_floating_sprites();
+    uint16_t result = RemoveFloatingEntities();
     console.WriteFormatLine("Removed %d flying objects", result);
     return 0;
 }
@@ -1253,7 +1255,7 @@ static int32_t cc_remove_park_fences(InteractiveConsole& console, [[maybe_unused
     tile_element_iterator_begin(&it);
     do
     {
-        if (it.element->GetType() == TILE_ELEMENT_TYPE_SURFACE)
+        if (it.element->GetType() == TileElementType::Surface)
         {
             // Remove all park fence flags
             it.element->AsSurface()->SetParkFences(0);
@@ -1283,7 +1285,7 @@ static int32_t cc_show_limits(InteractiveConsole& console, [[maybe_unused]] cons
     console.WriteFormatLine("Sprites: %d/%d", spriteCount, MAX_ENTITIES);
     console.WriteFormatLine("Map Elements: %zu/%d", tileElementCount, MAX_TILE_ELEMENTS);
     console.WriteFormatLine("Banners: %d/%zu", bannerCount, MAX_BANNERS);
-    console.WriteFormatLine("Rides: %d/%d", rideCount, MAX_RIDES);
+    console.WriteFormatLine("Rides: %d/%d", rideCount, OpenRCT2::Limits::MaxRidesInPark);
     console.WriteFormatLine("Images: %zu/%zu", ImageListGetUsedCount(), ImageListGetMaximum());
     return 0;
 }
@@ -1353,28 +1355,30 @@ static int32_t cc_load_park([[maybe_unused]] InteractiveConsole& console, [[mayb
         return 0;
     }
 
-    char savePath[MAX_PATH];
+    u8string savePath = {};
     if (String::IndexOf(argv[0].c_str(), '/') == SIZE_MAX && String::IndexOf(argv[0].c_str(), '\\') == SIZE_MAX)
     {
         // no / or \ was included. File should be in save dir.
-        platform_get_user_directory(savePath, "save", sizeof(savePath));
-        safe_strcat_path(savePath, argv[0].c_str(), sizeof(savePath));
+        auto env = OpenRCT2::GetContext()->GetPlatformEnvironment();
+        auto directory = env->GetDirectoryPath(OpenRCT2::DIRBASE::USER, OpenRCT2::DIRID::SAVE);
+        savePath = Path::Combine(directory, argv[0]);
     }
     else
     {
-        safe_strcpy(savePath, argv[0].c_str(), sizeof(savePath));
+        savePath = argv[0];
     }
-    if (!String::EndsWith(savePath, ".sv6", true) && !String::EndsWith(savePath, ".sc6", true))
+    if (!String::EndsWith(savePath, ".sv6", true) && !String::EndsWith(savePath, ".sc6", true)
+        && !String::EndsWith(savePath, ".park", true))
     {
-        path_append_extension(savePath, ".sv6", sizeof(savePath));
+        savePath += ".park";
     }
-    if (context_load_park_from_file(savePath))
+    if (context_load_park_from_file(savePath.c_str()))
     {
-        console.WriteFormatLine("Park %s was loaded successfully", savePath);
+        console.WriteFormatLine("Park %s was loaded successfully", savePath.c_str());
     }
     else
     {
-        console.WriteFormatLine("Loading Park %s failed", savePath);
+        console.WriteFormatLine("Loading Park %s failed", savePath.c_str());
     }
     return 1;
 }
@@ -1723,6 +1727,53 @@ static int32_t cc_add_news_item([[maybe_unused]] InteractiveConsole& console, [[
     return 0;
 }
 
+static int32_t cc_profiler_reset([[maybe_unused]] InteractiveConsole& console, [[maybe_unused]] const arguments_t& argv)
+{
+    OpenRCT2::Profiling::ResetData();
+    return 0;
+}
+static int32_t cc_profiler_start([[maybe_unused]] InteractiveConsole& console, [[maybe_unused]] const arguments_t& argv)
+{
+    if (!OpenRCT2::Profiling::IsEnabled())
+        console.WriteLine("Started profiler");
+    OpenRCT2::Profiling::Enable();
+    return 0;
+}
+
+static int32_t cc_profiler_exportcsv([[maybe_unused]] InteractiveConsole& console, [[maybe_unused]] const arguments_t& argv)
+{
+    if (argv.size() < 1)
+    {
+        console.WriteLineError("Missing argument: <file path>");
+        return 1;
+    }
+
+    const auto& csvFilePath = argv[0];
+    if (!OpenRCT2::Profiling::ExportCSV(csvFilePath))
+    {
+        console.WriteFormatLine("Unable to export CSV file to %s", csvFilePath.c_str());
+        return 1;
+    }
+
+    console.WriteFormatLine("Wrote file CSV file: \"%s\"", csvFilePath.c_str());
+    return 0;
+}
+
+static int32_t cc_profiler_stop([[maybe_unused]] InteractiveConsole& console, [[maybe_unused]] const arguments_t& argv)
+{
+    if (OpenRCT2::Profiling::IsEnabled())
+        console.WriteLine("Stopped profiler");
+    OpenRCT2::Profiling::Disable();
+
+    // Export to CSV if argument is provided.
+    if (argv.size() >= 1)
+    {
+        return cc_profiler_exportcsv(console, argv);
+    }
+
+    return 0;
+}
+
 using console_command_func = int32_t (*)(InteractiveConsole& console, const arguments_t& argv);
 struct console_command
 {
@@ -1827,6 +1878,10 @@ static constexpr const console_command console_command_table[] = {
       "replay_normalise <input file> <output file>" },
     { "mp_desync", cc_mp_desync, "Forces a multiplayer desync",
       "cc_mp_desync [desync_type, 0 = Random t-shirt color on random guest, 1 = Remove random guest ]" },
+    { "profiler_reset", cc_profiler_reset, "Resets the profiler data.", "profiler_reset" },
+    { "profiler_start", cc_profiler_start, "Starts the profiler.", "profiler_start" },
+    { "profiler_stop", cc_profiler_stop, "Stops the profiler.", "profiler_stop [<output file>]" },
+    { "profiler_exportcsv", cc_profiler_exportcsv, "Exports the current profiler data.", "profiler_exportcsv <output file>" },
 };
 
 static int32_t cc_windows(InteractiveConsole& console, [[maybe_unused]] const arguments_t& argv)

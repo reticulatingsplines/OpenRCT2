@@ -9,12 +9,13 @@
 
 #include "FileClassifier.h"
 
-#include "ParkFile.h"
 #include "core/Console.hpp"
 #include "core/FileStream.h"
 #include "core/Path.hpp"
 #include "core/String.hpp"
+#include "park/ParkFile.h"
 #include "rct12/SawyerChunkReader.h"
+#include "rct2/RCT2.h"
 #include "scenario/Scenario.h"
 #include "util/SawyerCoding.h"
 
@@ -100,7 +101,7 @@ static bool TryClassifyAsS6(OpenRCT2::IStream* stream, ClassifiedFileInfo* resul
     try
     {
         auto chunkReader = SawyerChunkReader(stream);
-        auto s6Header = chunkReader.ReadChunkAs<rct_s6_header>();
+        auto s6Header = chunkReader.ReadChunkAs<RCT2::S6Header>();
         if (s6Header.type == S6_TYPE_SAVEDGAME)
         {
             result->Type = FILE_TYPE::SAVED_GAME;
@@ -193,28 +194,28 @@ static bool TryClassifyAsTD4_TD6(OpenRCT2::IStream* stream, ClassifiedFileInfo* 
     return success;
 }
 
-uint32_t get_file_extension_type(const utf8* path)
+FileExtension get_file_extension_type(u8string_view path)
 {
     auto extension = Path::GetExtension(path);
     if (String::Equals(extension, ".dat", true) || String::Equals(extension, ".pob", true))
-        return FILE_EXTENSION_DAT;
+        return FileExtension::DAT;
     if (String::Equals(extension, ".sc4", true))
-        return FILE_EXTENSION_SC4;
+        return FileExtension::SC4;
     if (String::Equals(extension, ".sv4", true))
-        return FILE_EXTENSION_SV4;
+        return FileExtension::SV4;
     if (String::Equals(extension, ".td4", true))
-        return FILE_EXTENSION_TD4;
+        return FileExtension::TD4;
     if (String::Equals(extension, ".sc6", true))
-        return FILE_EXTENSION_SC6;
+        return FileExtension::SC6;
     if (String::Equals(extension, ".sea", true))
-        return FILE_EXTENSION_SC6;
+        return FileExtension::SC6;
     if (String::Equals(extension, ".sv6", true))
-        return FILE_EXTENSION_SV6;
+        return FileExtension::SV6;
     if (String::Equals(extension, ".sv7", true))
-        return FILE_EXTENSION_SV6;
+        return FileExtension::SV6;
     if (String::Equals(extension, ".td6", true))
-        return FILE_EXTENSION_TD6;
+        return FileExtension::TD6;
     if (String::Equals(extension, ".park", true))
-        return FILE_EXTENSION_PARK;
-    return FILE_EXTENSION_UNKNOWN;
+        return FileExtension::PARK;
+    return FileExtension::Unknown;
 }

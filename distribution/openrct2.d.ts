@@ -39,6 +39,8 @@ declare global {
     var scenario: Scenario;
     /** APIs for the climate and weather. */
     var climate: Climate;
+    /** APIs for performance profiling. */
+    var profiler: Profiler;
     /**
      * APIs for creating and editing title sequences.
      * These will only be available to clients that are not running headless mode.
@@ -184,6 +186,20 @@ declare global {
         sharedStorage: Configuration;
 
         /**
+         * Gets the storage for the current plugin if no name is specified.
+         * If a plugin name is specified, the storage for the plugin with that name will be returned.
+         * Data is persisted for the current loaded park, and is stored inside the .park file.
+         * Any references to objects, or arrays are copied by reference. If these arrays, objects,
+         * or any other arrays, or objects that they reference change without a subsequent call to
+         * the `set` method, their new state will still be serialised.
+         * Keep in mind that all data here will be serialised every time the park is
+         * saved, including when the park is periodically saved automatically.
+         * @param pluginName The name of the plugin to get a store for. If undefined, the
+         *                   current plugin's name will be used. Plugin names are case sensitive.
+         */
+        getParkStorage(pluginName?: string): Configuration;
+
+        /**
          * Render the current state of the map and save to disc.
          * Useful for server administration and timelapse creation.
          * @param options Options that control the capture and output file.
@@ -239,8 +255,8 @@ declare global {
          * @param args The action parameters.
          * @param callback The function to be called with the result of the action.
          */
-        queryAction(action: ActionType, args: object, callback: (result: GameActionResult) => void): void;
-        queryAction(action: string, args: object, callback: (result: GameActionResult) => void): void;
+        queryAction(action: ActionType, args: object, callback?: (result: GameActionResult) => void): void;
+        queryAction(action: string, args: object, callback?: (result: GameActionResult) => void): void;
 
         /**
          * Executes a game action. In a network game, this will send a request to the server and wait
@@ -249,8 +265,8 @@ declare global {
          * @param args The action parameters.
          * @param callback The function to be called with the result of the action.
          */
-        executeAction(action: ActionType, args: object, callback: (result: GameActionResult) => void): void;
-        executeAction(action: string, args: object, callback: (result: GameActionResult) => void): void;
+        executeAction(action: ActionType, args: object, callback?: (result: GameActionResult) => void): void;
+        executeAction(action: string, args: object, callback?: (result: GameActionResult) => void): void;
 
         /**
          * Subscribes to the given hook.
@@ -267,8 +283,9 @@ declare global {
         subscribe(hook: "network.leave", callback: (e: NetworkEventArgs) => void): IDisposable;
         subscribe(hook: "ride.ratings.calculate", callback: (e: RideRatingsCalculateArgs) => void): IDisposable;
         subscribe(hook: "action.location", callback: (e: ActionLocationArgs) => void): IDisposable;
-        subscribe(hook: "guest.generation", callback: (id: number) => void): IDisposable;
+        subscribe(hook: "guest.generation", callback: (e: GuestGenerationArgs) => void): IDisposable;
         subscribe(hook: "vehicle.crash", callback: (e: VehicleCrashArgs) => void): IDisposable;
+        subscribe(hook: "map.save", callback: () => void): IDisposable;
 
         /**
          * Registers a function to be called every so often in realtime, specified by the given delay.
@@ -300,7 +317,7 @@ declare global {
     }
 
     interface Configuration {
-        getAll(namespace: string): { [name: string]: any };
+        getAll(namespace?: string): { [name: string]: any };
         get<T>(key: string): T | undefined;
         get<T>(key: string, defaultValue: T): T;
         set<T>(key: string, value: T): void;
@@ -369,7 +386,8 @@ declare global {
     type HookType =
         "interval.tick" | "interval.day" |
         "network.chat" | "network.action" | "network.join" | "network.leave" |
-        "ride.ratings.calculate" | "action.location" | "vehicle.crash";
+        "ride.ratings.calculate" | "action.location" | "vehicle.crash" |
+        "map.save";
 
     type ExpenditureType =
         "ride_construction" |
@@ -394,6 +412,7 @@ declare global {
         "bannersetcolour" |
         "bannersetname" |
         "bannersetstyle" |
+        "changemapsize" |
         "clearscenery" |
         "climateset" |
         "footpathplace" |
@@ -519,6 +538,10 @@ declare global {
         result: boolean;
     }
 
+    interface GuestGenerationArgs {
+        readonly id: number;
+    }
+
     type VehicleCrashIntoType = "another_vehicle" | "land" | "water";
 
     interface VehicleCrashArgs {
@@ -585,15 +608,13 @@ declare global {
     }
 
     type TileElementType =
-        "surface" | "footpath" | "track" | "small_scenery" | "wall" | "entrance" | "large_scenery" | "banner"
-        /** This only exist to retrieve the types for existing corrupt elements. For hiding elements, use the isHidden field instead. */
-        | "openrct2_corrupt_deprecated";
+        "surface" | "footpath" | "track" | "small_scenery" | "wall" | "entrance" | "large_scenery" | "banner";
 
     type Direction = 0 | 1 | 2 | 3;
 
     type TileElement =
         SurfaceElement | FootpathElement | TrackElement | SmallSceneryElement | WallElement | EntranceElement
-        | LargeSceneryElement | BannerElement | CorruptElement;
+        | LargeSceneryElement | BannerElement;
 
     interface BaseTileElement {
         type: TileElementType;
@@ -624,9 +645,9 @@ declare global {
     interface FootpathElement extends BaseTileElement {
         type: "footpath";
 
-        object: number;
-        surfaceObject: number;
-        railingsObject: number;
+        object: number | null; /** Legacy footpaths, still in use. */
+        surfaceObject: number | null; /** NSF footpaths */
+        railingsObject: number | null; /** NSF footpaths */
 
         edges: number;
         corners: number;
@@ -650,6 +671,7 @@ declare global {
 
         direction: Direction;
         trackType: number;
+        rideType: number;
         sequence: number | null;
         mazeEntry: number | null;
 
@@ -696,8 +718,8 @@ declare global {
         ride: number;
         station: number;
         sequence: number;
-        footpathObject: number;
-        footpathSurfaceObject: number;
+        footpathObject: number | null;
+        footpathSurfaceObject: number | null;
     }
 
     interface LargeSceneryElement extends BaseTileElement {
@@ -715,10 +737,6 @@ declare global {
         type: "banner";
         direction: Direction;
         bannerIndex: number;
-    }
-
-    interface CorruptElement extends BaseTileElement {
-        type: "openrct2_corrupt_deprecated";
     }
 
     /**
@@ -1096,9 +1114,9 @@ declare global {
      */
     interface Entity {
         /**
-         * The entity index within the entity list.
+         * The entity index within the entity list. Returns null for invalid entities.
          */
-        readonly id: number;
+        readonly id: number | null;
         /**
          * The type of entity, e.g. guest, vehicle, etc.
          */
@@ -1159,15 +1177,15 @@ declare global {
 
         /**
          * The previous car on the ride. This may be the on the same train or the previous
-         * train. This will point to the last car if this is the first car on the ride.
+         * train. This will return null if there is no previous car.
          */
-        previousCarOnRide: number;
+        previousCarOnRide: number | null;
 
         /**
          * The next car on the ride. This may be the on the same train or the next
-         * train. This will point to the first car if this is the last car on the ride.
+         * train. This will return null if there is no next car.
          */
-        nextCarOnRide: number;
+        nextCarOnRide: number | null;
 
         /**
          * The current station the train is in or departing.
@@ -1493,9 +1511,46 @@ declare global {
          * The enabled jobs the staff can do, e.g. sweep litter, water plants, inspect rides etc.
          */
         orders: number;
+
+        /**
+         * Gets the patrol area for the staff member.
+         */
+         readonly patrolArea: PatrolArea;
     }
 
     type StaffType = "handyman" | "mechanic" | "security" | "entertainer";
+
+    interface PatrolArea {
+        /**
+         * Gets or sets the map coodinates for all individual tiles in the staff member's patrol area.
+         *
+         * Note: fetching all the staff member's patrol area tiles can degrade performance.
+         */
+        tiles: CoordsXY[];
+
+        /**
+         * Clears all tiles from the staff member's patrol area.
+         */
+        clear(): void;
+
+        /**
+         * Adds the given array of coordinates or a map range to the staff member's patrol area.
+         * @param coords An array of map coordinates, or a map range.
+         */
+        add(coords: CoordsXY[] | MapRange): void;
+
+        /**
+         * Removes the given array of coordinates or a map range from the staff member's patrol area.
+         * @param coords An array of map coordinates, or a map range.
+         */
+        remove(coords: CoordsXY[] | MapRange): void;
+
+        /**
+         * Checks whether a single coordinate is within the staff member's patrol area.
+         * @param coords An map coordinate.
+         */
+        contains(coord: CoordsXY): boolean;
+    }
 
     /**
      * Represents litter entity.
@@ -1527,7 +1582,7 @@ declare global {
 
     /**
      * Network APIs
-     * Use `network.status` to determine whether the current game is a client, server or in single player mode.
+     * Use `network.mode` to determine whether the current game is a client, server or in single player mode.
      */
     interface Network {
         readonly mode: NetworkMode;
@@ -1988,6 +2043,7 @@ declare global {
         readonly mainViewport: Viewport;
         readonly tileSelection: TileSelection;
         readonly tool: Tool | null;
+        readonly imageManager: ImageManager;
 
         getWindow(id: number): Window;
         getWindow(classification: string): Window;
@@ -2117,7 +2173,7 @@ declare global {
     }
 
     interface TileSelection {
-        range: MapRange;
+        range: MapRange | null;
         tiles: CoordsXY[];
     }
 
@@ -2288,13 +2344,13 @@ declare global {
 
     interface GroupBoxWidget extends WidgetBase {
         type: "groupbox";
+        text?: string;
     }
 
     interface LabelWidget extends WidgetBase {
         type: "label";
         text?: string;
         textAlign?: TextAlignment;
-        onChange?: (index: number) => void;
     }
 
     type TextAlignment = "left" | "centred";
@@ -2677,5 +2733,42 @@ declare global {
          * @param name The name of the title sequence.
          */
         create(name: string): TitleSequence;
+    }
+
+    interface ImageManager {
+        /**
+         * Gets the image index range for a predefined set of images.
+         * @param name The name of the image set.
+         */
+        getPredefinedRange(name: string): ImageIndexRange | null;
+
+        /**
+         * Gets the list of available ranges of unallocated images.
+         * Useful for displaying how fragmented the allocated image list is.
+         */
+        getAvailableAllocationRanges(): ImageIndexRange[];
+    }
+
+    interface ImageIndexRange {
+        start: number;
+        count: number;
+    }
+
+    interface Profiler {
+        getData(): ProfiledFunction[];
+        start(): void;
+        stop(): void;
+        reset(): void;
+        readonly enabled: boolean;
+    }
+
+    interface ProfiledFunction {
+        readonly name: string;
+        readonly callCount: number;
+        readonly minTime: number;
+        readonly maxTime: number;
+        readonly totalTime: number;
+        readonly parents: number[];
+        readonly children: number[];
     }
 }

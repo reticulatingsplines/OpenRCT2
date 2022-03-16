@@ -10,7 +10,6 @@
 #pragma once
 
 #include "../common.h"
-#include "../ride/Ride.h"
 #include "Map.h"
 
 #define MAX_ENTRANCE_FEE MONEY(200, 00)
@@ -52,6 +51,7 @@ namespace OpenRCT2
     {
     public:
         std::string Name;
+        std::string PluginStorage;
 
         Park() = default;
         Park(const Park&) = delete;

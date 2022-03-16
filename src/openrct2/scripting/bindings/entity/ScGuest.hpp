@@ -22,7 +22,7 @@ namespace OpenRCT2::Scripting
     class ScGuest : public ScPeep
     {
     public:
-        ScGuest(uint16_t id);
+        ScGuest(EntityId id);
 
         static void Register(duk_context* ctx);
 

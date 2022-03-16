@@ -29,7 +29,7 @@
 #include <openrct2/interface/Screenshot.h>
 #include <openrct2/localisation/Localisation.h>
 #include <openrct2/network/network.h>
-#include <openrct2/platform/platform.h>
+#include <openrct2/platform/Platform.h>
 #include <openrct2/ride/Track.h>
 #include <openrct2/ride/TrackPaint.h>
 #include <openrct2/scenario/Scenario.h>
@@ -501,6 +501,25 @@ static void TileInspectorMouseDown(rct_widgetindex widgetIndex)
     }
 }
 
+static void ShortcutToggleVisibility()
+{
+    // TODO: Once the tile inspector window has its own class, move this to its own function
+    if (windowTileInspectorSelectedIndex < 0)
+        return;
+
+    rct_window* w = window_find_by_class(WC_TILE_INSPECTOR);
+    if (w == nullptr)
+        return;
+
+    extern TileCoordsXY windowTileInspectorTile;
+    TileElement* tileElement = map_get_nth_element_at(windowTileInspectorTile.ToCoordsXY(), windowTileInspectorSelectedIndex);
+    if (tileElement != nullptr)
+    {
+        tileElement->SetInvisible(!tileElement->IsInvisible());
+        w->Invalidate();
+    }
+}
+
 static void ShortcutIncreaseElementHeight()
 {
     rct_window* w = window_find_by_class(WC_TILE_INSPECTOR);
@@ -755,7 +774,7 @@ void ShortcutManager::RegisterDefaultShortcuts()
         }
     });
 
-    RegisterShortcut(ShortcutId::ScaleToggleWindowMode, STR_SHORTCUT_WINDOWED_MODE_TOGGLE, "ALT+RETURN", []() { platform_toggle_windowed_mode(); });
+    RegisterShortcut(ShortcutId::ScaleToggleWindowMode, STR_SHORTCUT_WINDOWED_MODE_TOGGLE, "ALT+RETURN", []() { ToggleWindowedMode(); });
     RegisterShortcut(ShortcutId::InterfaceScaleIncrease, STR_SHORTCUT_SCALE_UP, []() { ShortcutScaleUp(); });
     RegisterShortcut(ShortcutId::InterfaceScaleDecrease, STR_SHORTCUT_SCALE_DOWN, []() { ShortcutScaleDown(); });
 
@@ -851,7 +870,7 @@ void ShortcutManager::RegisterDefaultShortcuts()
     RegisterShortcut(ShortcutId::WindowRideConstructionBuild, STR_SHORTCUT_CONSTRUCTION_BUILD_CURRENT, "NUMPAD 0", []() { ShortcutConstructionBuildCurrent(); });
     RegisterShortcut(ShortcutId::WindowRideConstructionDemolish, STR_SHORTCUT_CONSTRUCTION_DEMOLISH_CURRENT, "NUMPAD -", []() { ShortcutConstructionDemolishCurrent(); });
 
-    RegisterShortcut(ShortcutId::WindowTileInspectorToggleInvisibility, STR_SHORTCUT_TOGGLE_INVISIBILITY, []() { TileInspectorMouseUp(WC_TILE_INSPECTOR__WIDX_BUTTON_TOGGLE_INVISIBILITY); });
+    RegisterShortcut(ShortcutId::WindowTileInspectorToggleInvisibility, STR_SHORTCUT_TOGGLE_INVISIBILITY, []() { ShortcutToggleVisibility(); });
     RegisterShortcut(ShortcutId::WindowTileInspectorCopy, STR_SHORTCUT_COPY_ELEMENT, []() { TileInspectorMouseUp(WC_TILE_INSPECTOR__WIDX_BUTTON_COPY); });
     RegisterShortcut(ShortcutId::WindowTileInspectorPaste, STR_SHORTCUT_PASTE_ELEMENT, []() { TileInspectorMouseUp(WC_TILE_INSPECTOR__WIDX_BUTTON_PASTE); });
     RegisterShortcut(ShortcutId::WindowTileInspectorRemove, STR_SHORTCUT_REMOVE_ELEMENT, []() { TileInspectorMouseUp(WC_TILE_INSPECTOR__WIDX_BUTTON_REMOVE); });

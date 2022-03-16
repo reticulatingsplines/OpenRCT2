@@ -1701,12 +1701,12 @@ STR_2347    :{RED}{STRINGID} ist ertrunken!
 STR_2348    :Statistiken für diesen Mitarbeiter anzeigen
 STR_2349    :{WINDOW_COLOUR_2}Lohn: {BLACK}{CURRENCY} pro Monat
 STR_2350    :{WINDOW_COLOUR_2}Angestellt seit: {BLACK}{MONTHYEAR}
-STR_2351    :{WINDOW_COLOUR_2}Gemähte Rasenflächen: {BLACK}{COMMA16}
-STR_2352    :{WINDOW_COLOUR_2}Bewässerte Beete: {BLACK}{COMMA16}
-STR_2353    :{WINDOW_COLOUR_2}Gefegte Fußwege: {BLACK}{COMMA16}
-STR_2354    :{WINDOW_COLOUR_2}Geleerte Mülleimer: {BLACK}{COMMA16}
-STR_2355    :{WINDOW_COLOUR_2}Reparierte Attraktionen: {BLACK}{COMMA16}
-STR_2356    :{WINDOW_COLOUR_2}Inspizierte Attraktionen: {BLACK}{COMMA16}
+STR_2351    :{WINDOW_COLOUR_2}Gemähte Rasenflächen: {BLACK}{COMMA32}
+STR_2352    :{WINDOW_COLOUR_2}Bewässerte Beete: {BLACK}{COMMA32}
+STR_2353    :{WINDOW_COLOUR_2}Gefegte Fußwege: {BLACK}{COMMA32}
+STR_2354    :{WINDOW_COLOUR_2}Geleerte Mülleimer: {BLACK}{COMMA32}
+STR_2355    :{WINDOW_COLOUR_2}Reparierte Attraktionen: {BLACK}{COMMA32}
+STR_2356    :{WINDOW_COLOUR_2}Inspizierte Attraktionen: {BLACK}{COMMA32}
 STR_2358    :Einheiten
 STR_2359    :Echte Werte
 STR_2360    :Bildschirmauflösung:
@@ -2239,7 +2239,7 @@ STR_3185    :Kleine Szenerie
 STR_3186    :Große Szenerie
 STR_3187    :Wände/Zäune
 STR_3188    :Fußwegschilder
-STR_3189    :Fußwege
+STR_3189    :Legacy-Fußwege
 STR_3190    :Fußwegextras
 STR_3191    :Szeneriegruppen
 STR_3192    :Parkeingang
@@ -2962,8 +2962,6 @@ STR_5723    :Starker Regen
 STR_5724    :Gewitter
 STR_5725    :{BLACK}Wetter setzen:
 STR_5726    :Stellt das aktuelle Wetter im Park ein
-STR_5727    :Skalierungsqualität:
-STR_5731    :Linear
 STR_5734    :Darstellung
 STR_5735    :Netzwerkstatus
 STR_5736    :Spieler
@@ -3047,7 +3045,6 @@ STR_5813    :„{STRING}“
 STR_5814    :{WINDOW_COLOUR_1}„{STRING}“
 STR_5815    :FPS-Zähler im Spiel anzeigen
 STR_5816    :Stellt den Faktor für die Skalierung des{NEWLINE}Spiels ein. Besonders für hohe{NEWLINE}Auflösungen sinnvoll
-STR_5817    :Stellt den Skalierungstyp der Benutzeroberfläche ein. Benötigt Anzeige durch Hardware.{NEWLINE}Lineares Skalieren ist flüssig, aber unscharf. Das Nächster-Nachbar-{NEWLINE}Glättungsverfahren ist scharf, kann jedoch zu geringen Leistungseinbußen führen.
 STR_5819    :[Benötigt Anzeige durch Hardware]{NEWLINE}Pausiert das Spiel, wenn das Steam-Overlay geöffnet wird
 STR_5820    :Minimiert das Spiel, wenn das Spiel{NEWLINE}im Vollbildmodus nicht im{NEWLINE}Vordergrund ist
 STR_5822    :Wechselt zwischen Tag und Nacht.{NEWLINE}Ein kompletter Zyklus dauert einen Monat im Spiel
@@ -3297,10 +3294,10 @@ STR_6068    :Server heruntergefahren.
 STR_6069    :{STRING} wurde von {STRING} vom Server gekickt.
 STR_6070    :{STRING} wurde der Gruppe „{STRING}“ von {STRING} zugewiesen.
 STR_6071    :{STRING} hat die neue Gruppe „{STRING}“ erstellt.
-STR_6072    :{STRING} hat die Gruppe „{String}“ gelöscht.
-STR_6073    :{STRING} hat die Berechtigungen der Gruppe „{String}“ bearbeitet.
-STR_6074    :{STRING} hat den Namen der Gruppe von „{String}“ zu „{String}“ geändert.
-STR_6075    :{STRING} hat „{String}“ als Standardgruppe festgelegt.
+STR_6072    :{STRING} hat die Gruppe „{STRING}“ gelöscht.
+STR_6073    :{STRING} hat die Berechtigungen der Gruppe „{STRING}“ bearbeitet.
+STR_6074    :{STRING} hat den Namen der Gruppe von „{STRING}“ zu „{STRING}“ geändert.
+STR_6075    :{STRING} hat „{STRING}“ als Standardgruppe festgelegt.
 STR_6076    :{STRING} hat den Cheat „{STRING}“ verwendet.
 STR_6077    :Geld hinzufügen
 STR_6078    :{STRING} hat die Attraktion „{STRING}“ erstellt.
@@ -3376,7 +3373,6 @@ STR_6155    :Weder KDialog noch Zenity sind installiert. Bitte installieren Sie 
 STR_6156    :Name ist reserviert
 STR_6157    :Konsole
 STR_6158    :Laden der Datei fehlgeschlagen…{NEWLINE}Inkompatible RCTC-Version: {COMMA16}
-STR_6159    :Nächster-Nachbar-Glättung
 STR_6160    :{WINDOW_COLOUR_2}Verfügbare Fahrzeuge: {BLACK}{STRING} 
 STR_6161    :Gitternetzlinien ein-/ausblenden
 STR_6162    :Rotierende Wilde Maus
@@ -3629,7 +3625,7 @@ STR_6431    :RMT
 STR_6432    :Maus {INT32}
 STR_6433    :Entfernen
 STR_6434    :Alle Zuweisungen für dieses Tastenkürzel entfernen.
-STR_6435    :{WINDOW_COLOUR_2}Aufgehaltene Vandalen: {BLACK}{COMMA16}
+STR_6435    :{WINDOW_COLOUR_2}Aufgehaltene Vandalen: {BLACK}{COMMA32}
 STR_6436    :Unsichtbarkeit umschalten
 STR_6437    :Unsichtbar
 STR_6438    :U
@@ -3653,6 +3649,8 @@ STR_6455    :Kann Schild nicht umbenennen …
 STR_6456    :Riesiger Screenshot
 STR_6457    :Einen Fehler auf GitHub melden
 STR_6458    :Dies in Hauptansicht folgen
+STR_6460    :R
+STR_6461    :Richtung
 
 #############
 # Scenarios #

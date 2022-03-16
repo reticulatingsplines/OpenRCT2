@@ -3,7 +3,68 @@
 - Headline feature: [#10664] New save format with increased limits.
 - Feature: [#714] Allow up to 255 trains per ride.
 - Feature: [#2253] Path surfaces and railings can be mixed and matched, like in RCT1.
-- Improved: [#10664] Invisibility status is now shown in the Tile Inspector.
+- Feature: [#2766] The Fruity Ices Stall can now be recoloured, like in RCT1.
+- Feature: [#4933] Allow map sizes of 999 × 999 (up from 254 × 254).
+- Feature: [#7660] Custom music objects that are distributed with the save.
+- Feature: [#8407] Ride platforms can be made invisible.
+- Feature: [#12793] Add Excitement/Intensity/Nausea ratings to Ride List view with sorting.
+- Feature: [#13858] Flatride bases can be made invisible.
+- Feature: [#14676] [Plugin] Allow plugins to store data in .park files.
+- Feature: [#15367] Individual track elements can now be drawn as another ride type.
+- Feature: [#16029] [Plugin] Add TrackElement.rideType to API.
+- Feature: [#16097] The Looping Roller Coaster can now draw all elements from the LIM Launched Roller Coaster.
+- Feature: [#16132, #16389] The Corkscrew, Twister and Vertical Drop Roller Coasters can now draw inline twists.
+- Feature: [#16144] [Plugin] Add ImageManager to API.
+- Feature: [#16731] [Plugin] New API for fetching and manipulating a staff member's patrol area.
+- Improved: [#3517] Cheats are now saved with the park.
+- Improved: [#10150] Ride stations are now properly checked if they’re sheltered.
+- Improved: [#10664, #16072] Visibility status can be modified directly in the Tile Inspector's list.
+- Improved: [#16251] Plugin API handles null values better.
+- Improved: [#16251] openrct2.d.ts: mark 'callback' argument of queryAction and executeAction as optional.
+- Improved: [#16251] openrct2.d.ts: change 'network.status' to 'network.mode' in network API docs.
+- Improved: [#16251] openrct2.d.ts: added previously undocumented GroupBoxWidget.text property.
+- Improved: [#16251] openrct2.d.ts: removed unused LabelWidget.onChange property.
+- Improved: [#16258] Increased image limit in the engine.
+- Improved: [#16408] Improve --version cli option to report more compatibility information.
+- Improved: [#16740] Allow staff patrol areas to be defined with individual tiles rather than groups of 4x4.
+- Improved: [#16764] [Plugin] Add hook 'map.save', called before the map is about is saved.
+- Change: [#14484] Make the Heartline Twister coaster ratings a little bit less hateful.
+- Change: [#16077] When importing SV6 files, the RCT1 land types are only added when they were actually used.
+- Change: [#16424] Following an entity in the title sequence no longer toggles underground view when it's underground.
+- Change: [#16493] Boat Hire and Submarine Ride support costs now match their visual appearance.
+- Change: [#16710] Changed default view of Guest List to 'Thoughts' and selected tab will default to 'Summarised' (when opened from the menu).
+- Fix: [#11752] Track pieces with fractional cost are too cheap to build.
+- Fix: [#12774] [Plugin] Scripts will not be re-initialised when a new scenario is loaded from within a running scenario.
+- Fix: [#13336] Can no longer place Bumble Bee track design (reverts #12707).
+- Fix: [#14155] Map Generator sometimes places non-tree objects as trees.
+- Fix: [#14674] Recent Messages only shows first few notifications.
+- Fix: [#15413] Modifying park rating with plugins desyncs park rating history from actual park rating.
+- Fix: [#15571] Non-ASCII characters in scenario description get distorted while saving.
+- Fix: [#15830] Objects with RCT1 images are very glitchy if OpenRCT2 is not linked to an RCT1 install.
+- Fix: [#15909] Text can overflow in ‘Select ride design’ windows.
+- Fix: [#15947, #15960] Removing a flat ride results in an error message and duplicate structures.
+- Fix: [#15998] Cannot set map size to the actual maximum.
+- Fix: [#16007] Scenario Editor “Entry Price” appears to the right of the value field.
+- Fix: [#16008] Tile Inspector can select elements from last tile without reselecting it.
+- Fix: [#16024] Go-Karts with more than 32 vehicles do not colour themselves correctly.
+- Fix: [#16026] Newly created rides with “Disable vehicle limits” cheat always get 32 trains with 12 cars each.
+- Fix: [#16063] Object Selection preview for objects with glass is broken.
+- Fix: [#16075] Exporting track designs saves scenery in incorrect locations.
+- Fix: [#16087] The Looping Roller Coaster booster is now always drawn correctly.
+- Fix: [#16140] The 'Follow this' option is now disabled when the ride view is set to 'overall' or a station.
+- Fix: [#16162] Go Karts speeds are not correctly randomised, they only go very fast or very slow.
+- Fix: [#16188] Medium-size banked turns on the Twister and Vertical Roller Coaster have incorrect support placement (partly original bug).
+- Fix: [#16264, #16572] Placing saved track design crashes game.
+- Fix: [#16327] Crash on malformed network packet.
+- Fix: [#16449] [Plugin] Viewport doesn't hide when switching tabs.
+- Fix: [#16450] Banner style not copied when using tile inspector.
+- Fix: [#16535] Entering construction mode unblocks all paths.
+- Fix: [#16542] “Same price throughout park” status not correctly imported for RCT1 saves.
+- Fix: [#16572] Crash when trying to place track designs.
+- Fix: [#16591] [Plugin] setInterval and setTimeout is not disposed when map unloads.
+- Fix: [#16711] [Plugin] Car.rideObject overflowing with more than 256 ride types.
+- Fix: [#16779] Fix case where title music doesn't unmute properly.
+- Fix: [objects#165] Glitch when Bengal Tiger Cars go through a corner.
 
 0.3.5.1 (2021-11-21)
 ------------------------------------------------------------------------
@@ -80,7 +141,7 @@
 
 0.3.4.1 (2021-07-25)
 ------------------------------------------------------------------------
-- Improved: [#12626] Allow using RCT2 saves to mark RCT Classic (.sea) parks as finished and vice versa. 
+- Improved: [#12626] Allow using RCT2 saves to mark RCT Classic (.sea) parks as finished and vice versa.
 - Fix: [#15028] Crash when placing large scenery.
 - Fix: [#15048] Crash when removing litter with cheats.
 - Fix: [#15052] Crash when using banner window.
@@ -159,7 +220,7 @@
 - Feature: [#14171] [Plugin] Add API for creating custom widgets.
 - Feature: [#14171] [Plugin] Add API for drawing graphics for custom widgets.
 - Feature: [#14171] [Plugin] Add click event to spinners and allow them to be held down.
-- Feature: [#14252] [Plugin] Add API for vehicle g-forces. 
+- Feature: [#14252] [Plugin] Add API for vehicle g-forces.
 - Improved: [#6022] Allow up to 128 ride objects to be selected in track designer.
 - Improved: [#12917] Changed peep movement so that they stay more spread out over the full width of single tile paths.
 - Improved: [#13386] A GUI error message is now displayed if the language files are missing.
@@ -271,6 +332,7 @@
 - Fix: [#12691] Ride graph tooltip incorrectly used count instead of number string.
 - Fix: [#12694] Crash when switching ride types with construction window open.
 - Fix: [#12701] Silent NSIS setup flag /S isn’t silent, upgrade pop-up appears anyway.
+- Fix: [#12707] Incomplete loop collision box allowed overlapping track (original bug) (reverted in v0.4.0).
 - Fix: [#12737] Space Rings draw the same vehicle 4 times.
 - Fix: [#12756] Scenario Editor crashing the game on macOS.
 - Fix: [#12764] Rides don’t start aged anymore.
@@ -282,7 +344,6 @@
 - Fix: [#12910] Plugin API: getRide sometimes returns null for valid ride IDs.
 - Fix: [#12912] Plugin: selectedCell of CustomListView is being ignored on creation.
 - Fix: [#12918] Cannot place vanilla TD6 tracks of the Hypercoaster, Monster Trucks, Classic Mini Roller Coaster, Spinning Wild Mouse and Hyper-Twister types.
-- Fix: Incomplete loop collision box allowed overlapping track (original bug).
 
 0.3.0 (2020-08-15)
 ------------------------------------------------------------------------
@@ -385,7 +446,7 @@
 - Fix: [#10928] File browser’s date column is too narrow.
 - Fix: [#10951, #11160] Attempting to place park entrances creates ghost entrances in random locations.
 - Fix: [#11005] Company value overflows.
-- Fix: [#11027] Third color on walls becomes black when saving.
+- Fix: [#11027] Third colour on walls becomes black when saving.
 - Fix: [#11063] Scrolling position persists when switching tabs in the scenery window.
 - Fix: [#11106] Crash on getting invalid vehicle index.
 - Fix: [#11126] Cannot place Frightmare track design.

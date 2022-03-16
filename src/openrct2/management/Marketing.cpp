@@ -12,9 +12,11 @@
 #include "../Cheats.h"
 #include "../Game.h"
 #include "../config/Config.h"
+#include "../entity/Guest.h"
 #include "../interface/Window.h"
+#include "../localisation/Formatter.h"
 #include "../localisation/Localisation.h"
-#include "../peep/Guest.h"
+#include "../profiling/Profiling.h"
 #include "../ride/Ride.h"
 #include "../ride/RideData.h"
 #include "../ride/ShopItem.h"
@@ -96,6 +98,8 @@ static void marketing_raise_finished_notification(const MarketingCampaign& campa
  */
 void marketing_update()
 {
+    PROFILED_FUNCTION();
+
     if (gCheatsNeverendingMarketing)
         return;
 
@@ -239,7 +243,7 @@ void marketing_new_campaign(const MarketingCampaign& campaign)
     }
 }
 
-void MarketingCancelCampaignsForRide(const ride_id_t rideId)
+void MarketingCancelCampaignsForRide(const RideId rideId)
 {
     auto isCampaignForRideFn = [&rideId](MarketingCampaign& campaign) {
         if (campaign.Type == ADVERTISING_CAMPAIGN_RIDE_FREE || campaign.Type == ADVERTISING_CAMPAIGN_RIDE)

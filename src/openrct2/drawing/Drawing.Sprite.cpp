@@ -7,17 +7,18 @@
  * OpenRCT2 is licensed under the GNU General Public License version 3.
  *****************************************************************************/
 
+#include "Drawing.h"
+
 #include "../Context.h"
 #include "../OpenRCT2.h"
 #include "../PlatformEnvironment.h"
 #include "../config/Config.h"
 #include "../core/FileStream.h"
 #include "../core/Path.hpp"
-#include "../platform/platform.h"
+#include "../platform/Platform.h"
 #include "../sprites.h"
 #include "../ui/UiContext.h"
 #include "../util/Util.h"
-#include "Drawing.h"
 #include "ScrollingText.h"
 
 #include <algorithm>
@@ -197,7 +198,7 @@ bool gfx_load_g1(const IPlatformEnvironment& env)
     log_verbose("gfx_load_g1(...)");
     try
     {
-        auto path = Path::Combine(env.GetDirectoryPath(DIRBASE::RCT2, DIRID::DATA), "g1.dat");
+        auto path = Path::Combine(env.GetDirectoryPath(DIRBASE::RCT2, DIRID::DATA), u8"g1.dat");
         auto fs = FileStream(path, FILE_MODE_OPEN);
         _g1.header = fs.ReadValue<rct_g1_header>();
 
@@ -264,10 +265,10 @@ bool gfx_load_g2()
 {
     log_verbose("gfx_load_g2()");
 
-    char path[MAX_PATH];
+    auto env = GetContext()->GetPlatformEnvironment();
 
-    platform_get_openrct2_data_path(path, sizeof(path));
-    safe_strcat_path(path, "g2.dat", MAX_PATH);
+    std::string path = Path::Combine(env->GetDirectoryPath(DIRBASE::OPENRCT2), u8"g2.dat");
+
     try
     {
         auto fs = FileStream(path, FILE_MODE_OPEN);
@@ -306,7 +307,7 @@ bool gfx_load_csg()
 {
     log_verbose("gfx_load_csg()");
 
-    if (str_is_null_or_empty(gConfigGeneral.rct1_path))
+    if (gConfigGeneral.rct1_path.empty())
     {
         log_verbose("  unable to load CSG, RCT1 path not set");
         return false;
@@ -435,7 +436,7 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
         return;
     }
 
-    if (dpi->zoom_level > 0 && (g1->flags & G1_FLAG_HAS_ZOOM_SPRITE))
+    if (dpi->zoom_level > ZoomLevel{ 0 } && (g1->flags & G1_FLAG_HAS_ZOOM_SPRITE))
     {
         rct_drawpixelinfo zoomed_dpi = *dpi;
         zoomed_dpi.bits = dpi->bits;
@@ -452,16 +453,16 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
         return;
     }
 
-    if (dpi->zoom_level > 0 && (g1->flags & G1_FLAG_NO_ZOOM_DRAW))
+    if (dpi->zoom_level > ZoomLevel{ 0 } && (g1->flags & G1_FLAG_NO_ZOOM_DRAW))
     {
         return;
     }
 
     // Its used super often so we will define it to a separate variable.
-    auto zoom_level = dpi->zoom_level;
-    int32_t zoom_mask = zoom_level > 0 ? 0xFFFFFFFF * zoom_level : 0xFFFFFFFF;
+    const auto zoom_level = dpi->zoom_level;
+    const int32_t zoom_mask = zoom_level > ZoomLevel{ 0 } ? zoom_level.ApplyTo(0xFFFFFFFF) : 0xFFFFFFFF;
 
-    if (zoom_level > 0 && g1->flags & G1_FLAG_RLE_COMPRESSION)
+    if (zoom_level > ZoomLevel{ 0 } && g1->flags & G1_FLAG_RLE_COMPRESSION)
     {
         x -= ~zoom_mask;
         y -= ~zoom_mask;
@@ -503,7 +504,7 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
     }
     else
     {
-        if ((g1->flags & G1_FLAG_RLE_COMPRESSION) && zoom_level > 0)
+        if ((g1->flags & G1_FLAG_RLE_COMPRESSION) && zoom_level > ZoomLevel{ 0 })
         {
             source_start_y -= dest_start_y & ~zoom_mask;
             height += dest_start_y & ~zoom_mask;
@@ -522,7 +523,7 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
     if (height <= 0)
         return;
 
-    dest_start_y = dest_start_y / zoom_level;
+    dest_start_y = zoom_level.ApplyInversedTo(dest_start_y);
 
     // This will be the width of the drawn image
     int32_t width = g1->width;
@@ -549,7 +550,7 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
     }
     else
     {
-        if ((g1->flags & G1_FLAG_RLE_COMPRESSION) && zoom_level > 0)
+        if ((g1->flags & G1_FLAG_RLE_COMPRESSION) && zoom_level > ZoomLevel{ 0 })
         {
             source_start_x -= dest_start_x & ~zoom_mask;
         }
@@ -567,11 +568,11 @@ void FASTCALL gfx_draw_sprite_palette_set_software(
             return;
     }
 
-    dest_start_x = dest_start_x / zoom_level;
+    dest_start_x = zoom_level.ApplyInversedTo(dest_start_x);
 
     uint8_t* dest_pointer = dpi->bits;
     // Move the pointer to the start point of the destination
-    dest_pointer += ((dpi->width / zoom_level) + dpi->pitch) * dest_start_y + dest_start_x;
+    dest_pointer += (zoom_level.ApplyInversedTo(dpi->width) + dpi->pitch) * dest_start_y + dest_start_x;
 
     DrawSpriteArgs args(imageId, paletteMap, *g1, source_start_x, source_start_y, width, height, dest_pointer);
     gfx_sprite_to_buffer(*dpi, args);
@@ -596,11 +597,11 @@ void FASTCALL gfx_sprite_to_buffer(rct_drawpixelinfo& dpi, const DrawSpriteArgs&
  *  rct2: 0x00681DE2
  */
 void FASTCALL gfx_draw_sprite_raw_masked_software(
-    rct_drawpixelinfo* dpi, const ScreenCoordsXY& scrCoords, int32_t maskImage, int32_t colourImage)
+    rct_drawpixelinfo* dpi, const ScreenCoordsXY& scrCoords, ImageId maskImage, ImageId colourImage)
 {
     int32_t left, top, right, bottom, width, height;
-    auto imgMask = gfx_get_g1_element(maskImage & 0x7FFFF);
-    auto imgColour = gfx_get_g1_element(colourImage & 0x7FFFF);
+    auto imgMask = gfx_get_g1_element(maskImage);
+    auto imgColour = gfx_get_g1_element(colourImage);
     if (imgMask == nullptr || imgColour == nullptr)
     {
         return;
@@ -609,11 +610,11 @@ void FASTCALL gfx_draw_sprite_raw_masked_software(
     // Only BMP format is supported for masking
     if (!(imgMask->flags & G1_FLAG_BMP) || !(imgColour->flags & G1_FLAG_BMP))
     {
-        gfx_draw_sprite_software(dpi, ImageId::FromUInt32(colourImage), scrCoords);
+        gfx_draw_sprite_software(dpi, colourImage, scrCoords);
         return;
     }
 
-    if (dpi->zoom_level != 0)
+    if (dpi->zoom_level != ZoomLevel{ 0 })
     {
         // TODO: Implement other zoom levels (probably not used though)
         assert(false);
@@ -654,12 +655,12 @@ const rct_g1_element* gfx_get_g1_element(ImageId imageId)
     return gfx_get_g1_element(imageId.GetIndex());
 }
 
-const rct_g1_element* gfx_get_g1_element(int32_t image_id)
+const rct_g1_element* gfx_get_g1_element(ImageIndex image_id)
 {
     openrct2_assert(!gOpenRCT2NoGraphics, "gfx_get_g1_element called on headless instance");
 
     auto offset = static_cast<size_t>(image_id);
-    if (offset == 0x7FFFF)
+    if (offset == 0x7FFFF || offset == ImageIndexUndefined)
     {
         return nullptr;
     }
@@ -718,7 +719,7 @@ const rct_g1_element* gfx_get_g1_element(int32_t image_id)
     return nullptr;
 }
 
-void gfx_set_g1_element(int32_t imageId, const rct_g1_element* g1)
+void gfx_set_g1_element(ImageIndex imageId, const rct_g1_element* g1)
 {
     bool isTemp = imageId == SPR_TEMP;
     bool isValid = (imageId >= SPR_IMAGE_LIST_BEGIN && imageId < SPR_IMAGE_LIST_END)
@@ -740,7 +741,7 @@ void gfx_set_g1_element(int32_t imageId, const rct_g1_element* g1)
         {
             if (imageId < SPR_RCTC_G1_END)
             {
-                if (imageId < static_cast<int32_t>(_g1.elements.size()))
+                if (imageId < static_cast<ImageIndex>(_g1.elements.size()))
                 {
                     _g1.elements[imageId] = *g1;
                 }

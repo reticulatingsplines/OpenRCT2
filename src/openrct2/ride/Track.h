@@ -11,7 +11,8 @@
 
 #include "../common.h"
 #include "../object/Object.h"
-#include "Ride.h"
+#include "../world/Map.h"
+#include "../world/TileElement.h"
 
 constexpr const uint32_t RideConstructionSpecialPieceSelected = 0x10000;
 
@@ -573,11 +574,9 @@ roll_type_t track_get_actual_bank(TileElement* tileElement, roll_type_t bank);
 roll_type_t track_get_actual_bank_2(int32_t rideType, bool isInverted, roll_type_t bank);
 roll_type_t track_get_actual_bank_3(bool useInvertedSprites, TileElement* tileElement);
 
-bool track_add_station_element(CoordsXYZD loc, ride_id_t rideIndex, int32_t flags, bool fromTrackDesign);
-bool track_remove_station_element(const CoordsXYZD& loc, ride_id_t rideIndex, int32_t flags);
+bool track_add_station_element(CoordsXYZD loc, RideId rideIndex, int32_t flags, bool fromTrackDesign);
+bool track_remove_station_element(const CoordsXYZD& loc, RideId rideIndex, int32_t flags);
 
-money32 maze_set_track(
-    uint16_t x, uint16_t y, uint16_t z, uint8_t flags, bool initialPlacement, uint8_t direction, ride_id_t rideIndex,
-    uint8_t mode);
+money32 maze_set_track(const CoordsXYZD& coords, uint8_t flags, bool initialPlacement, RideId rideIndex, uint8_t mode);
 
 bool TrackTypeHasSpeedSetting(track_type_t trackType);

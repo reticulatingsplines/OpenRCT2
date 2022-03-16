@@ -22,7 +22,7 @@
 #    include "../core/FileScanner.h"
 #    include "../core/Path.hpp"
 #    include "../interface/InteractiveConsole.h"
-#    include "../platform/Platform2.h"
+#    include "../platform/Platform.h"
 #    include "Duktape.hpp"
 #    include "bindings/entity/ScEntity.hpp"
 #    include "bindings/entity/ScGuest.hpp"
@@ -34,6 +34,7 @@
 #    include "bindings/game/ScConsole.hpp"
 #    include "bindings/game/ScContext.hpp"
 #    include "bindings/game/ScDisposable.hpp"
+#    include "bindings/game/ScProfiler.hpp"
 #    include "bindings/network/ScNetwork.hpp"
 #    include "bindings/network/ScPlayer.hpp"
 #    include "bindings/network/ScPlayerGroup.hpp"
@@ -402,6 +403,7 @@ void ScriptEngine::Initialise()
     ScParkMessage::Register(ctx);
     ScPlayer::Register(ctx);
     ScPlayerGroup::Register(ctx);
+    ScProfiler::Register(ctx);
     ScRide::Register(ctx);
     ScRideStation::Register(ctx);
     ScRideObject::Register(ctx);
@@ -419,6 +421,7 @@ void ScriptEngine::Initialise()
 #    endif
     ScScenario::Register(ctx);
     ScScenarioObjective::Register(ctx);
+    ScPatrolArea::Register(ctx);
     ScStaff::Register(ctx);
 
     dukglue_register_global(ctx, std::make_shared<ScCheats>(), "cheats");
@@ -429,6 +432,7 @@ void ScriptEngine::Initialise()
     dukglue_register_global(ctx, std::make_shared<ScMap>(ctx), "map");
     dukglue_register_global(ctx, std::make_shared<ScNetwork>(ctx), "network");
     dukglue_register_global(ctx, std::make_shared<ScPark>(), "park");
+    dukglue_register_global(ctx, std::make_shared<ScProfiler>(ctx), "profiler");
     dukglue_register_global(ctx, std::make_shared<ScScenario>(), "scenario");
 
     _initialised = true;
@@ -436,6 +440,7 @@ void ScriptEngine::Initialise()
     _pluginsStarted = false;
 
     InitSharedStorage();
+    ClearParkStorage();
 }
 
 void ScriptEngine::LoadPlugins()
@@ -452,7 +457,7 @@ void ScriptEngine::LoadPlugins()
     auto base = _env.GetDirectoryPath(DIRBASE::USER, DIRID::PLUGIN);
     if (Path::DirectoryExists(base))
     {
-        auto pattern = Path::Combine(base, "*.js");
+        auto pattern = Path::Combine(base, u8"*.js");
         auto scanner = Path::ScanDirectory(pattern, true);
         while (scanner->Next())
         {
@@ -506,24 +511,18 @@ void ScriptEngine::StopPlugin(std::shared_ptr<Plugin> plugin)
 {
     if (plugin->HasStarted())
     {
-        RemoveCustomGameActions(plugin);
-        RemoveIntervals(plugin);
-        RemoveSockets(plugin);
-        _hookEngine.UnsubscribeAll(plugin);
+        plugin->StopBegin();
+
         for (const auto& callback : _pluginStoppedSubscriptions)
         {
             callback(plugin);
         }
+        RemoveCustomGameActions(plugin);
+        RemoveIntervals(plugin);
+        RemoveSockets(plugin);
+        _hookEngine.UnsubscribeAll(plugin);
 
-        ScriptExecutionInfo::PluginScope scope(_execInfo, plugin, false);
-        try
-        {
-            plugin->Stop();
-        }
-        catch (const std::exception& e)
-        {
-            _console.WriteLineError(e.what());
-        }
+        plugin->StopEnd();
     }
 }
 
@@ -646,8 +645,10 @@ void ScriptEngine::StopPlugins()
     _pluginsStarted = false;
 }
 
-void ScriptEngine::Update()
+void ScriptEngine::Tick()
 {
+    PROFILED_FUNCTION();
+
     if (!_initialised)
     {
         Initialise();
@@ -720,7 +721,7 @@ DukValue ScriptEngine::ExecutePluginCall(
     bool isGameStateMutable)
 {
     DukStackFrame frame(_context);
-    if (func.is_function())
+    if (func.is_function() && plugin->HasStarted())
     {
         ScriptExecutionInfo::PluginScope scope(_execInfo, plugin, isGameStateMutable);
         func.push();
@@ -762,8 +763,7 @@ void ScriptEngine::AddNetworkPlugin(std::string_view code)
     LoadPlugin(plugin);
 }
 
-std::unique_ptr<GameActions::Result> ScriptEngine::QueryOrExecuteCustomGameAction(
-    std::string_view id, std::string_view args, bool isExecute)
+GameActions::Result ScriptEngine::QueryOrExecuteCustomGameAction(std::string_view id, std::string_view args, bool isExecute)
 {
     std::string actionz = std::string(id);
     auto kvp = _customActions.find(actionz);
@@ -777,9 +777,9 @@ std::unique_ptr<GameActions::Result> ScriptEngine::QueryOrExecuteCustomGameActio
         auto dukArgs = DuktapeTryParseJson(_context, argsz);
         if (!dukArgs)
         {
-            auto action = std::make_unique<GameActions::Result>();
-            action->Error = GameActions::Status::InvalidParameters;
-            action->ErrorTitle = "Invalid JSON";
+            auto action = GameActions::Result();
+            action.Error = GameActions::Status::InvalidParameters;
+            action.ErrorTitle = "Invalid JSON";
             return action;
         }
 
@@ -796,19 +796,19 @@ std::unique_ptr<GameActions::Result> ScriptEngine::QueryOrExecuteCustomGameActio
         return DukToGameActionResult(dukResult);
     }
 
-    auto action = std::make_unique<GameActions::Result>();
-    action->Error = GameActions::Status::Unknown;
-    action->ErrorTitle = "Unknown custom action";
+    auto action = GameActions::Result();
+    action.Error = GameActions::Status::Unknown;
+    action.ErrorTitle = "Unknown custom action";
     return action;
 }
 
-std::unique_ptr<GameActions::Result> ScriptEngine::DukToGameActionResult(const DukValue& d)
+GameActions::Result ScriptEngine::DukToGameActionResult(const DukValue& d)
 {
-    auto result = std::make_unique<GameActions::Result>();
-    result->Error = static_cast<GameActions::Status>(AsOrDefault<int32_t>(d["error"]));
-    result->ErrorTitle = AsOrDefault<std::string>(d["errorTitle"]);
-    result->ErrorMessage = AsOrDefault<std::string>(d["errorMessage"]);
-    result->Cost = AsOrDefault<int32_t>(d["cost"]);
+    auto result = GameActions::Result();
+    result.Error = static_cast<GameActions::Status>(AsOrDefault<int32_t>(d["error"]));
+    result.ErrorTitle = AsOrDefault<std::string>(d["errorTitle"]);
+    result.ErrorMessage = AsOrDefault<std::string>(d["errorMessage"]);
+    result.Cost = AsOrDefault<int32_t>(d["cost"]);
 
     auto expenditureType = AsOrDefault<std::string>(d["expenditureType"]);
     if (!expenditureType.empty())
@@ -816,7 +816,7 @@ std::unique_ptr<GameActions::Result> ScriptEngine::DukToGameActionResult(const D
         auto expenditure = StringToExpenditureType(expenditureType);
         if (expenditure != ExpenditureType::Count)
         {
-            result->Expenditure = expenditure;
+            result.Expenditure = expenditure;
         }
     }
     return result;
@@ -859,7 +859,7 @@ ExpenditureType ScriptEngine::StringToExpenditureType(std::string_view expenditu
     return ExpenditureType::Count;
 }
 
-DukValue ScriptEngine::GameActionResultToDuk(const GameAction& action, const std::unique_ptr<GameActions::Result>& result)
+DukValue ScriptEngine::GameActionResultToDuk(const GameAction& action, const GameActions::Result& result)
 {
     DukStackFrame frame(_context);
     DukObject obj(_context);
@@ -869,36 +869,36 @@ DukValue ScriptEngine::GameActionResultToDuk(const GameAction& action, const std
     {
         obj.Set("player", action.GetPlayer());
     }
-    if (result->Cost != MONEY32_UNDEFINED)
+    if (result.Cost != MONEY32_UNDEFINED)
     {
-        obj.Set("cost", result->Cost);
+        obj.Set("cost", result.Cost);
     }
-    if (!result->Position.IsNull())
+    if (!result.Position.IsNull())
     {
-        obj.Set("position", ToDuk(_context, result->Position));
+        obj.Set("position", ToDuk(_context, result.Position));
     }
 
-    if (result->Expenditure != ExpenditureType::Count)
+    if (result.Expenditure != ExpenditureType::Count)
     {
-        obj.Set("expenditureType", ExpenditureTypeToString(result->Expenditure));
+        obj.Set("expenditureType", ExpenditureTypeToString(result.Expenditure));
     }
 
     if (action.GetType() == GameCommand::CreateRide)
     {
-        if (result->Error == GameActions::Status::Ok)
+        if (result.Error == GameActions::Status::Ok)
         {
-            const auto rideIndex = result->GetData<ride_id_t>();
-            obj.Set("ride", EnumValue(rideIndex));
+            const auto rideIndex = result.GetData<RideId>();
+            obj.Set("ride", rideIndex.ToUnderlying());
         }
     }
     else if (action.GetType() == GameCommand::HireNewStaffMember)
     {
-        if (result->Error == GameActions::Status::Ok)
+        if (result.Error == GameActions::Status::Ok)
         {
-            const auto actionResult = result->GetData<StaffHireNewActionResult>();
-            if (actionResult.StaffEntityId != SPRITE_INDEX_NULL)
+            const auto actionResult = result.GetData<StaffHireNewActionResult>();
+            if (!actionResult.StaffEntityId.IsNull())
             {
-                obj.Set("peep", actionResult.StaffEntityId);
+                obj.Set("peep", actionResult.StaffEntityId.ToUnderlying());
             }
         }
     }
@@ -1004,6 +1004,7 @@ const static EnumMap<GameCommand> ActionNameToType = {
     { "bannersetcolour", GameCommand::SetBannerColour },
     { "bannersetname", GameCommand::SetBannerName },
     { "bannersetstyle", GameCommand::SetBannerStyle },
+    { "changemapsize", GameCommand::ChangeMapSize },
     { "clearscenery", GameCommand::ClearScenery },
     { "climateset", GameCommand::SetClimate },
     { "footpathplace", GameCommand::PlacePath },
@@ -1099,7 +1100,7 @@ static std::unique_ptr<GameAction> CreateGameActionFromActionId(const std::strin
     return nullptr;
 }
 
-void ScriptEngine::RunGameActionHooks(const GameAction& action, std::unique_ptr<GameActions::Result>& result, bool isExecute)
+void ScriptEngine::RunGameActionHooks(const GameAction& action, GameActions::Result& result, bool isExecute)
 {
     DukStackFrame frame(_context);
 
@@ -1159,9 +1160,9 @@ void ScriptEngine::RunGameActionHooks(const GameAction& action, std::unique_ptr<
                 auto error = AsOrDefault<int32_t>(dukResult["error"]);
                 if (error != 0)
                 {
-                    result->Error = static_cast<GameActions::Status>(error);
-                    result->ErrorTitle = AsOrDefault<std::string>(dukResult["errorTitle"]);
-                    result->ErrorMessage = AsOrDefault<std::string>(dukResult["errorMessage"]);
+                    result.Error = static_cast<GameActions::Status>(error);
+                    result.ErrorTitle = AsOrDefault<std::string>(dukResult["errorTitle"]);
+                    result.ErrorMessage = AsOrDefault<std::string>(dukResult["errorMessage"]);
                 }
             }
         }
@@ -1246,6 +1247,29 @@ void ScriptEngine::SaveSharedStorage()
     }
 }
 
+void ScriptEngine::ClearParkStorage()
+{
+    duk_push_object(_context);
+    _parkStorage = std::move(DukValue::take_from_stack(_context));
+}
+
+std::string ScriptEngine::GetParkStorageAsJSON()
+{
+    _parkStorage.push();
+    auto json = std::string(duk_json_encode(_context, -1));
+    duk_pop(_context);
+    return json;
+}
+
+void ScriptEngine::SetParkStorageFromJSON(std::string_view value)
+{
+    auto result = DuktapeTryParseJson(_context, value);
+    if (result)
+    {
+        _parkStorage = std::move(*result);
+    }
+}
+
 IntervalHandle ScriptEngine::AllocateHandle()
 {
     for (size_t i = 0; i < _intervals.size(); i++)
@@ -1291,7 +1315,7 @@ void ScriptEngine::RemoveInterval(const std::shared_ptr<Plugin>& plugin, Interva
 
 void ScriptEngine::UpdateIntervals()
 {
-    uint32_t timestamp = platform_get_ticks();
+    uint32_t timestamp = Platform::GetTicks();
     if (timestamp < _lastIntervalTimestamp)
     {
         // timestamp has wrapped, subtract all intervals by the remaining amount before wrap
@@ -1437,6 +1461,11 @@ int32_t OpenRCT2::Scripting::GetTargetAPIVersion()
     }
 
     return plugin->GetTargetAPIVersion();
+}
+
+duk_bool_t duk_exec_timeout_check(void*)
+{
+    return false;
 }
 
 #endif

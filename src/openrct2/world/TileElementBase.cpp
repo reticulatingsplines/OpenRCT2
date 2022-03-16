@@ -10,15 +10,15 @@
 #include "Map.h"
 #include "TileElement.h"
 
-uint8_t TileElementBase::GetType() const
+TileElementType TileElementBase::GetType() const
 {
-    return this->type & TILE_ELEMENT_TYPE_MASK;
+    return static_cast<TileElementType>((this->type & TILE_ELEMENT_TYPE_MASK) >> 2);
 }
 
-void TileElementBase::SetType(uint8_t newType)
+void TileElementBase::SetType(TileElementType newType)
 {
     this->type &= ~TILE_ELEMENT_TYPE_MASK;
-    this->type |= (newType & TILE_ELEMENT_TYPE_MASK);
+    this->type |= ((EnumValue(newType) << 2) & TILE_ELEMENT_TYPE_MASK);
 }
 
 Direction TileElementBase::GetDirection() const

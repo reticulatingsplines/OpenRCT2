@@ -39,7 +39,7 @@
 #include <openrct2/interface/Chat.h>
 #include <openrct2/interface/InteractiveConsole.h>
 #include <openrct2/localisation/StringIds.h>
-#include <openrct2/platform/Platform2.h>
+#include <openrct2/platform/Platform.h>
 #include <openrct2/scripting/ScriptEngine.h>
 #include <openrct2/title/TitleSequencePlayer.h>
 #include <openrct2/ui/UiContext.h>
@@ -137,7 +137,7 @@ public:
 #endif
     }
 
-    void Update() override
+    void Tick() override
     {
         _inGameConsole.Update();
     }
@@ -597,7 +597,7 @@ public:
     void TriggerResize() override
     {
         char scaleQualityBuffer[4];
-        _scaleQuality = gConfigGeneral.scale_quality;
+        _scaleQuality = ScaleQuality::SmoothNearestNeighbour;
         if (gConfigGeneral.window_scale == std::floor(gConfigGeneral.window_scale))
         {
             _scaleQuality = ScaleQuality::NearestNeighbour;

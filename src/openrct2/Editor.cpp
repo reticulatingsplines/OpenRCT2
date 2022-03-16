@@ -19,6 +19,12 @@
 #include "actions/LandBuyRightsAction.h"
 #include "actions/LandSetRightsAction.h"
 #include "audio/audio.h"
+#include "core/Path.hpp"
+#include "entity/EntityList.h"
+#include "entity/EntityRegistry.h"
+#include "entity/Guest.h"
+#include "entity/PatrolArea.h"
+#include "entity/Staff.h"
 #include "interface/Viewport.h"
 #include "interface/Window_internal.h"
 #include "localisation/Localisation.h"
@@ -27,8 +33,6 @@
 #include "object/DefaultObjects.h"
 #include "object/ObjectManager.h"
 #include "object/ObjectRepository.h"
-#include "peep/Guest.h"
-#include "peep/Staff.h"
 #include "rct1/RCT1.h"
 #include "scenario/Scenario.h"
 #include "ui/UiContext.h"
@@ -36,12 +40,10 @@
 #include "util/Util.h"
 #include "windows/Intent.h"
 #include "world/Climate.h"
-#include "world/EntityList.h"
 #include "world/Entrance.h"
 #include "world/Footpath.h"
 #include "world/Park.h"
 #include "world/Scenery.h"
-#include "world/Sprite.h"
 
 #include <algorithm>
 #include <array>
@@ -93,7 +95,7 @@ namespace Editor
     {
         OpenRCT2::Audio::StopAll();
         object_list_load();
-        OpenRCT2::GetContext()->GetGameState()->InitAll(150);
+        OpenRCT2::GetContext()->GetGameState()->InitAll(DEFAULT_MAP_SIZE);
         gScreenFlags = SCREEN_FLAGS_SCENARIO_EDITOR;
         gEditorStep = EditorStep::ObjectSelection;
         gParkFlags |= PARK_FLAGS_SHOW_REAL_GUEST_NAMES;
@@ -169,7 +171,7 @@ namespace Editor
 
         object_manager_unload_all_objects();
         object_list_load();
-        OpenRCT2::GetContext()->GetGameState()->InitAll(150);
+        OpenRCT2::GetContext()->GetGameState()->InitAll(DEFAULT_MAP_SIZE);
         SetAllLandOwned();
         gEditorStep = EditorStep::ObjectSelection;
         viewport_init_all();
@@ -190,7 +192,7 @@ namespace Editor
 
         object_manager_unload_all_objects();
         object_list_load();
-        OpenRCT2::GetContext()->GetGameState()->InitAll(150);
+        OpenRCT2::GetContext()->GetGameState()->InitAll(DEFAULT_MAP_SIZE);
         SetAllLandOwned();
         gEditorStep = EditorStep::ObjectSelection;
         viewport_init_all();
@@ -205,9 +207,8 @@ namespace Editor
      */
     static void SetAllLandOwned()
     {
-        int32_t mapSize = gMapSize;
-
-        MapRange range = { 64, 64, (mapSize - 3) * 32, (mapSize - 3) * 32 };
+        MapRange range = { 2 * COORDS_XY_STEP, 2 * COORDS_XY_STEP, (gMapSize.x - 3) * COORDS_XY_STEP,
+                           (gMapSize.y - 3) * COORDS_XY_STEP };
         auto landSetRightsAction = LandSetRightsAction(range, LandSetRightSetting::SetForSale);
         landSetRightsAction.SetFlags(GAME_COMMAND_FLAG_NO_SPEND);
         GameActions::Execute(&landSetRightsAction);
@@ -227,17 +228,17 @@ namespace Editor
         //        after we have loaded a new park.
         window_close_all();
 
-        uint32_t extension = get_file_extension_type(path);
+        auto extension = get_file_extension_type(path);
         switch (extension)
         {
-            case FILE_EXTENSION_SC6:
-            case FILE_EXTENSION_SV6:
+            case FileExtension::SC6:
+            case FileExtension::SV6:
                 return ReadS6(path);
-            case FILE_EXTENSION_SC4:
+            case FileExtension::SC4:
                 return LoadLandscapeFromSC4(path);
-            case FILE_EXTENSION_SV4:
+            case FileExtension::SV4:
                 return LoadLandscapeFromSV4(path);
-            case FILE_EXTENSION_PARK:
+            case FileExtension::PARK:
                 return ReadPark(path);
             default:
                 return false;
@@ -282,7 +283,8 @@ namespace Editor
      */
     static bool ReadS6(const char* path)
     {
-        auto extension = path_get_extension(path);
+        auto extensionS = Path::GetExtension(path);
+        const char* extension = extensionS.c_str();
         auto loadedFromSave = false;
         if (_stricmp(extension, ".sc6") == 0)
         {
@@ -348,8 +350,8 @@ namespace Editor
             staff->SetName({});
         }
 
-        reset_sprite_list();
-        staff_reset_modes();
+        ResetAllEntities();
+        UpdateConsolidatedPatrolAreas();
         gNumGuestsInPark = 0;
         gNumGuestsHeadingForPark = 0;
         gNumGuestsInParkLastWeek = 0;

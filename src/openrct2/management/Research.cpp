@@ -13,16 +13,20 @@
 #include "../OpenRCT2.h"
 #include "../actions/ParkSetResearchFundingAction.h"
 #include "../config/Config.h"
+#include "../core/BitSet.hpp"
 #include "../core/Guard.hpp"
 #include "../core/Memory.hpp"
 #include "../interface/Window.h"
 #include "../localisation/Date.h"
+#include "../localisation/Formatter.h"
 #include "../localisation/Localisation.h"
 #include "../localisation/StringIds.h"
 #include "../object/ObjectList.h"
-#include "../rct1/RCT1.h"
+#include "../object/RideObject.h"
+#include "../profiling/Profiling.h"
 #include "../ride/Ride.h"
 #include "../ride/RideData.h"
+#include "../ride/RideEntry.h"
 #include "../ride/TrackData.h"
 #include "../scenario/Scenario.h"
 #include "../util/Util.h"
@@ -33,6 +37,8 @@
 
 #include <algorithm>
 #include <iterator>
+
+using namespace OpenRCT2;
 
 static constexpr const int32_t _researchRate[] = {
     0,
@@ -230,7 +236,7 @@ void research_finish_item(ResearchItem* researchItem)
                     rct_ride_entry* rideEntry2 = get_ride_entry(i);
                     if (rideEntry2 != nullptr)
                     {
-                        for (uint8_t j = 0; j < MAX_RIDE_TYPES_PER_RIDE_ENTRY; j++)
+                        for (uint8_t j = 0; j < RCT2::ObjectLimits::MaxRideTypesPerRideEntry; j++)
                         {
                             if (rideEntry2->ride_type[j] == base_ride_type)
                             {
@@ -307,6 +313,8 @@ void research_finish_item(ResearchItem* researchItem)
  */
 void research_update()
 {
+    PROFILED_FUNCTION();
+
     int32_t editorScreenFlags, researchLevel, currentResearchProgress;
 
     editorScreenFlags = SCREEN_FLAGS_SCENARIO_EDITOR | SCREEN_FLAGS_TRACK_DESIGNER | SCREEN_FLAGS_TRACK_MANAGER;
@@ -541,8 +549,11 @@ bool ride_type_is_invented(uint32_t rideType)
     return RideTypeIsValid(rideType) ? _researchedRideTypes[rideType] : false;
 }
 
-bool ride_entry_is_invented(int32_t rideEntryIndex)
+bool ride_entry_is_invented(ObjectEntryIndex rideEntryIndex)
 {
+    if (rideEntryIndex >= std::size(_researchedRideEntries))
+        return false;
+
     return _researchedRideEntries[rideEntryIndex];
 }
 
@@ -554,9 +565,12 @@ void ride_type_set_invented(uint32_t rideType)
     }
 }
 
-void ride_entry_set_invented(int32_t rideEntryIndex)
+void ride_entry_set_invented(ObjectEntryIndex rideEntryIndex)
 {
-    _researchedRideEntries[rideEntryIndex] = true;
+    if (rideEntryIndex >= std::size(_researchedRideEntries))
+        log_error("Tried setting ride entry %u as invented", rideEntryIndex);
+    else
+        _researchedRideEntries[rideEntryIndex] = true;
 }
 
 bool scenery_is_invented(const ScenerySelection& sceneryItem)
@@ -935,7 +949,7 @@ bool ResearchItem::operator==(const ResearchItem& rhs) const
     return (entryIndex == rhs.entryIndex && baseRideType == rhs.baseRideType && type == rhs.type);
 }
 
-static std::bitset<RIDE_TYPE_COUNT> _seenRideType = {};
+static BitSet<RIDE_TYPE_COUNT> _seenRideType = {};
 
 static void research_update_first_of_type(ResearchItem* researchItem)
 {

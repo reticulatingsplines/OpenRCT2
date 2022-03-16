@@ -11,14 +11,13 @@
 
 #include "../common.h"
 #include "../core/Random.hpp"
+#include "../entity/EntityList.h"
 #include "../management/Finance.h"
 #include "../management/Research.h"
 #include "../object/Object.h"
-#include "../ride/Ride.h"
 #include "../ride/RideRatings.h"
 #include "../world/Banner.h"
 #include "../world/Climate.h"
-#include "../world/EntityList.h"
 #include "../world/Map.h"
 #include "../world/MapAnimation.h"
 
@@ -180,7 +179,7 @@ random_engine_t::result_type scenario_rand();
 uint32_t scenario_rand_max(uint32_t max);
 
 bool scenario_prepare_for_save();
-int32_t scenario_save(const utf8* path, int32_t flags);
+int32_t scenario_save(u8string_view path, int32_t flags);
 void scenario_failure();
 void scenario_success();
 void scenario_success_submit_name(const char* name);

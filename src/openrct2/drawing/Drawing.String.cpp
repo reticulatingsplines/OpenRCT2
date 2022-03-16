@@ -7,18 +7,19 @@
  * OpenRCT2 is licensed under the GNU General Public License version 3.
  *****************************************************************************/
 
+#include "../drawing/Drawing.h"
+
 #include "../Context.h"
 #include "../common.h"
 #include "../config/Config.h"
 #include "../core/String.hpp"
-#include "../drawing/Drawing.h"
 #include "../drawing/IDrawingContext.h"
 #include "../drawing/IDrawingEngine.h"
 #include "../interface/Viewport.h"
 #include "../localisation/Formatting.h"
 #include "../localisation/Localisation.h"
 #include "../localisation/LocalisationService.h"
-#include "../platform/platform.h"
+#include "../platform/Platform.h"
 #include "../sprites.h"
 #include "../util/Util.h"
 #include "TTF.h"

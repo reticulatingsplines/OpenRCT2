@@ -8,16 +8,19 @@ endif()
 # if it is available
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(CCache)
+option(OPENRCT2_USE_CCACHE "Use CCache to improve recompilation speed (optional)" ON)
 
-if (CCache_FOUND)
-    option(OPENRCT2_USE_CCACHE "Use CCache to improve recompilation speed (optional)" ON)
-    if (OPENRCT2_USE_CCACHE)
-        # Use e.g. "ccache clang++" instead of "clang++"
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCache_EXECUTABLE}")
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK    "${CCache_EXECUTABLE}")
-    endif (OPENRCT2_USE_CCACHE)
-endif (CCache_FOUND)
+if (OPENRCT2_USE_CCACHE)
+    find_package(CCache)
+
+    if (CCache_FOUND)
+         # Use e.g. "ccache clang++" instead of "clang++"
+         set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCache_EXECUTABLE}")
+         set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK    "${CCache_EXECUTABLE}")
+    else()
+        message("Usage of CCache was enabled, but CCache was not found, so CCache is not being enabled.")
+    endif()
+endif (OPENRCT2_USE_CCACHE)
 
 if (APPLE)
     execute_process(COMMAND /usr/bin/uname -m OUTPUT_VARIABLE SYSTEM_MACOS_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -61,13 +64,13 @@ set(TITLE_SEQUENCE_VERSION "0.1.2c")
 set(TITLE_SEQUENCE_URL  "https://github.com/OpenRCT2/title-sequences/releases/download/v${TITLE_SEQUENCE_VERSION}/title-sequences.zip")
 set(TITLE_SEQUENCE_SHA1 "304d13a126c15bf2c86ff13b81a2f2cc1856ac8d")
 
-set(OBJECTS_VERSION "1.2.2")
+set(OBJECTS_VERSION "1.2.6")
 set(OBJECTS_URL  "https://github.com/OpenRCT2/objects/releases/download/v${OBJECTS_VERSION}/objects.zip")
-set(OBJECTS_SHA1 "a808fd47e9bc35d105dc371428a55888e6a86860")
+set(OBJECTS_SHA1 "cd86dd2e42edb513b18293ef7ae52a93a7cdfc57")
 
-set(REPLAYS_VERSION "0.0.59")
+set(REPLAYS_VERSION "0.0.65")
 set(REPLAYS_URL  "https://github.com/OpenRCT2/replays/releases/download/v${REPLAYS_VERSION}/replays.zip")
-set(REPLAYS_SHA1 "B2230B07F966A3CFFA5297C7B03ED7DD68FC9D2D")
+set(REPLAYS_SHA1 "CE3796062BF3FDDC3FA3C8FC2F0DDD8EE9314174")
 
 option(FORCE32 "Force 32-bit build. It will add `-m32` to compiler flags.")
 option(WITH_TESTS "Build tests")
@@ -412,6 +415,7 @@ endif ()
 if (NOT MACOS_BUNDLE OR (MACOS_BUNDLE AND WITH_TESTS))
     # Install
     # Don't recurse, grab all *.txt and *.md files
+    add_definitions(-DDOCDIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DOCDIR}")
     file(GLOB DOC_FILES "${ROOT_DIR}/distribution/*.txt")
     list(APPEND DOC_FILES "${ROOT_DIR}/contributors.md"
                         "${ROOT_DIR}/licence.txt"

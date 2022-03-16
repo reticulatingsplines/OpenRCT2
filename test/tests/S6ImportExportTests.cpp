@@ -16,7 +16,6 @@
 #include <openrct2/GameState.h>
 #include <openrct2/GameStateSnapshots.h>
 #include <openrct2/OpenRCT2.h>
-#include <openrct2/ParkFile.h>
 #include <openrct2/ParkImporter.h>
 #include <openrct2/audio/AudioContext.h>
 #include <openrct2/config/Config.h>
@@ -25,14 +24,16 @@
 #include <openrct2/core/MemoryStream.h>
 #include <openrct2/core/Path.hpp>
 #include <openrct2/core/String.hpp>
+#include <openrct2/entity/EntityRegistry.h>
+#include <openrct2/entity/EntityTweener.h>
 #include <openrct2/network/network.h>
 #include <openrct2/object/ObjectManager.h>
-#include <openrct2/platform/platform.h>
+#include <openrct2/park/ParkFile.h>
+#include <openrct2/platform/Platform.h>
 #include <openrct2/ride/Ride.h>
 #include <openrct2/scenario/Scenario.h>
-#include <openrct2/world/EntityTweener.h>
 #include <openrct2/world/MapAnimation.h>
-#include <openrct2/world/Sprite.h>
+#include <openrct2/world/Scenery.h>
 #include <stdio.h>
 #include <string>
 
@@ -60,7 +61,7 @@ static bool LoadFileToBuffer(MemoryStream& stream, const std::string& filePath)
 static void GameInit(bool retainSpatialIndices)
 {
     if (!retainSpatialIndices)
-        reset_sprite_spatial_index();
+        ResetEntitySpatialIndices();
 
     reset_all_sprite_quadrant_placements();
     scenery_set_default_placement_configuration();
@@ -186,7 +187,7 @@ TEST(S6ImportExportBasic, all)
     gOpenRCT2Headless = true;
     gOpenRCT2NoGraphics = true;
 
-    core_init();
+    Platform::CoreInit();
 
     MemoryStream importBuffer;
     MemoryStream exportBuffer;
@@ -232,7 +233,7 @@ TEST(S6ImportExportAdvanceTicks, all)
     gOpenRCT2Headless = true;
     gOpenRCT2NoGraphics = true;
 
-    core_init();
+    Platform::CoreInit();
 
     MemoryStream importBuffer;
     MemoryStream exportBuffer;

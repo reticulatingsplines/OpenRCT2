@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "../Identifiers.h"
 #include "../common.h"
 #include "../localisation/Formatter.h"
 #include "../ride/RideTypes.h"
@@ -72,7 +73,6 @@ using WidgetFlags = uint32_t;
 namespace WIDGET_FLAGS
 {
     const WidgetFlags TEXT_IS_STRING = 1 << 0;
-    const WidgetFlags IS_ENABLED = 1 << 1;
     const WidgetFlags IS_PRESSED = 1 << 2;
     const WidgetFlags IS_DISABLED = 1 << 3;
     const WidgetFlags TOOLTIP_IS_STRING = 1 << 4;
@@ -198,12 +198,12 @@ constexpr auto WINDOW_SCROLL_UNDEFINED = std::numeric_limits<uint16_t>::max();
 struct Focus
 {
     using CoordinateFocus = CoordsXYZ;
-    using EntityFocus = uint16_t;
+    using EntityFocus = EntityId;
 
-    uint8_t zoom = 0;
+    ZoomLevel zoom{};
     std::variant<CoordinateFocus, EntityFocus> data;
 
-    template<typename T> constexpr explicit Focus(T newValue, uint8_t newZoom = 0)
+    template<typename T> constexpr explicit Focus(T newValue, ZoomLevel newZoom = {})
     {
         data = newValue;
         zoom = newZoom;
@@ -269,8 +269,8 @@ struct campaign_variables
     int16_t no_weeks; // 0x482
     union
     {
-        ride_id_t RideId;            // 0x484
-        ObjectEntryIndex ShopItemId; // 0x484
+        ::RideId RideId;
+        ObjectEntryIndex ShopItemId;
     };
     uint32_t pad_486;
 };
@@ -462,6 +462,7 @@ enum
     WC_DEBUG_PAINT = 130,
     WC_VIEW_CLIPPING = 131,
     WC_OBJECT_LOAD_ERROR = 132,
+    WC_PATROL_AREA = 133,
 
     // Only used for colour schemes
     WC_STAFF = 220,
@@ -530,41 +531,40 @@ enum
 #define WC_MAP__WIDX_ROTATE_90 20
 #define WC_EDITOR_OBJECT_SELECTION__WIDX_TAB_1 21
 #define WC_STAFF__WIDX_PICKUP 9
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_ROTATE 14
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_TOGGLE_INVISIBILITY 10
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_COPY 17
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_PASTE 16
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_REMOVE 11
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_MOVE_UP 12
-#define WC_TILE_INSPECTOR__WIDX_BUTTON_MOVE_DOWN 13
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_ROTATE 13
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_COPY 16
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_PASTE 15
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_REMOVE 10
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_MOVE_UP 11
+#define WC_TILE_INSPECTOR__WIDX_BUTTON_MOVE_DOWN 12
 #define WC_TILE_INSPECTOR__WIDX_SPINNER_X_INCREASE 5
 #define WC_TILE_INSPECTOR__WIDX_SPINNER_X_DECREASE 6
 #define WC_TILE_INSPECTOR__WIDX_SPINNER_Y_INCREASE 8
 #define WC_TILE_INSPECTOR__WIDX_SPINNER_Y_DECREASE 9
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_SURFACE TileInspectorPage::Surface
-#define WC_TILE_INSPECTOR__WIDX_SURFACE_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_SURFACE_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_SURFACE_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_SURFACE_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_PATH TileInspectorPage::Path
-#define WC_TILE_INSPECTOR__WIDX_PATH_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_PATH_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_PATH_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_PATH_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_TRACK TileInspectorPage::Track
-#define WC_TILE_INSPECTOR__WIDX_TRACK_SPINNER_HEIGHT_INCREASE 29
-#define WC_TILE_INSPECTOR__WIDX_TRACK_SPINNER_HEIGHT_DECREASE 30
+#define WC_TILE_INSPECTOR__WIDX_TRACK_SPINNER_HEIGHT_INCREASE 28
+#define WC_TILE_INSPECTOR__WIDX_TRACK_SPINNER_HEIGHT_DECREASE 29
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_SCENERY TileInspectorPage::Scenery
-#define WC_TILE_INSPECTOR__WIDX_SCENERY_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_SCENERY_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_SCENERY_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_SCENERY_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_ENTRANCE TileInspectorPage::Entrance
-#define WC_TILE_INSPECTOR__WIDX_ENTRANCE_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_ENTRANCE_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_ENTRANCE_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_ENTRANCE_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_WALL TileInspectorPage::Wall
-#define WC_TILE_INSPECTOR__WIDX_WALL_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_WALL_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_WALL_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_WALL_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_LARGE_SCENERY TileInspectorPage::LargeScenery
-#define WC_TILE_INSPECTOR__WIDX_LARGE_SCENERY_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_LARGE_SCENERY_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_LARGE_SCENERY_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_LARGE_SCENERY_SPINNER_HEIGHT_DECREASE 28
 #define WC_TILE_INSPECTOR__TILE_INSPECTOR_PAGE_BANNER TileInspectorPage::Banner
-#define WC_TILE_INSPECTOR__WIDX_BANNER_SPINNER_HEIGHT_INCREASE 28
-#define WC_TILE_INSPECTOR__WIDX_BANNER_SPINNER_HEIGHT_DECREASE 29
+#define WC_TILE_INSPECTOR__WIDX_BANNER_SPINNER_HEIGHT_INCREASE 27
+#define WC_TILE_INSPECTOR__WIDX_BANNER_SPINNER_HEIGHT_DECREASE 28
 
 enum class PromptMode : uint8_t
 {
@@ -715,16 +715,19 @@ rct_window* WindowCreateCentred(
 void window_close(rct_window* window);
 void window_close_by_class(rct_windowclass cls);
 void window_close_by_number(rct_windowclass cls, rct_windownumber number);
+void window_close_by_number(rct_windowclass cls, EntityId number);
 void window_close_top();
 void window_close_all();
 void window_close_all_except_class(rct_windowclass cls);
 void window_close_all_except_flags(uint16_t flags);
 rct_window* window_find_by_class(rct_windowclass cls);
 rct_window* window_find_by_number(rct_windowclass cls, rct_windownumber number);
+rct_window* window_find_by_number(rct_windowclass cls, EntityId id);
 rct_window* window_find_from_point(const ScreenCoordsXY& screenCoords);
 rct_widgetindex window_find_widget_from_point(rct_window* w, const ScreenCoordsXY& screenCoords);
 void window_invalidate_by_class(rct_windowclass cls);
 void window_invalidate_by_number(rct_windowclass cls, rct_windownumber number);
+void window_invalidate_by_number(rct_windowclass cls, EntityId id);
 void window_invalidate_all();
 void widget_invalidate(rct_window* w, rct_widgetindex widgetIndex);
 void widget_invalidate_by_class(rct_windowclass cls, rct_widgetindex widgetIndex);
@@ -778,8 +781,6 @@ void window_ride_construct(rct_window* w);
 void ride_construction_toolupdate_entrance_exit(const ScreenCoordsXY& screenCoords);
 void ride_construction_toolupdate_construct(const ScreenCoordsXY& screenCoords);
 void ride_construction_tooldown_construct(const ScreenCoordsXY& screenCoords);
-
-void window_align_tabs(rct_window* w, rct_widgetindex start_tab_id, rct_widgetindex end_tab_id);
 
 void window_staff_list_init_vars();
 
@@ -855,17 +856,16 @@ void window_footpath_keyboard_shortcut_slope_up();
 void window_footpath_keyboard_shortcut_build_current();
 void window_footpath_keyboard_shortcut_demolish_current();
 
-void window_follow_sprite(rct_window* w, size_t spriteIndex);
+void window_follow_sprite(rct_window* w, EntityId spriteIndex);
 void window_unfollow_sprite(rct_window* w);
 
 bool window_ride_construction_update_state(
-    int32_t* trackType, int32_t* trackDirection, ride_id_t* rideIndex, int32_t* _liftHillAndAlternativeState,
-    CoordsXYZ* trackPos, int32_t* properties);
+    int32_t* trackType, int32_t* trackDirection, RideId* rideIndex, int32_t* _liftHillAndAlternativeState, CoordsXYZ* trackPos,
+    int32_t* properties);
 money32 place_provisional_track_piece(
-    ride_id_t rideIndex, int32_t trackType, int32_t trackDirection, int32_t liftHillAndAlternativeState,
+    RideId rideIndex, int32_t trackType, int32_t trackDirection, int32_t liftHillAndAlternativeState,
     const CoordsXYZ& trackPos);
 
-extern uint64_t _enabledRidePieces;
 extern RideConstructionState _rideConstructionState2;
 extern bool _stationConstructed;
 extern bool _deferClose;
